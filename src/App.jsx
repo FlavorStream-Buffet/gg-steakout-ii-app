@@ -13,11 +13,9 @@ function clampQty(n) {
 
 function buildLineLabel(item, chosen) {
   const parts = [];
-
   const mode = chosen?.mode || "original";
   parts.push(mode === "original" ? "G&G Original" : "Customized");
 
-  // Required single-choice groups
   if (chosen?.single) {
     for (const [groupId, optId] of Object.entries(chosen.single)) {
       const g = (item.optionGroups || []).find((x) => x.id === groupId);
@@ -26,7 +24,6 @@ function buildLineLabel(item, chosen) {
     }
   }
 
-  // Multi-choice groups
   if (chosen?.multi) {
     for (const [groupId, optIds] of Object.entries(chosen.multi)) {
       const g = (item.optionGroups || []).find((x) => x.id === groupId);
@@ -44,7 +41,6 @@ function buildLineLabel(item, chosen) {
 
 function calcOptionsDelta(item, chosen) {
   let delta = 0;
-
   const groups = item.optionGroups || [];
   const single = chosen?.single || {};
   const multi = chosen?.multi || {};
@@ -62,15 +58,11 @@ function calcOptionsDelta(item, chosen) {
       }
     }
   }
-
   return delta;
 }
 
 function defaultChosenForItem(item) {
-  // Default to G&G Original
   const chosen = { mode: "original", single: {}, multi: {} };
-
-  // Preselect defaults for required single-choice groups (even though hidden until Customize)
   for (const g of item.optionGroups || []) {
     if (g.type === "single") {
       const def = g.options.find((o) => o.default) || g.options[0];
@@ -81,18 +73,21 @@ function defaultChosenForItem(item) {
 }
 
 export default function App() {
-  const [orderMode, setOrderMode] = useState("delivery"); // delivery default (locked)
+  const [orderMode, setOrderMode] = useState("delivery"); // Delivery default (locked)
   const [locationId, setLocationId] = useState(LOCATIONS[0]?.id || "loc-1");
+
+  const location = useMemo(
+    () => LOCATIONS.find((l) => l.id === locationId) || LOCATIONS[0],
+    [locationId]
+  );
 
   const menu = useMemo(() => getMenuForLocationId(locationId), [locationId]);
 
-  // Slide-up panel state
   const [panelOpen, setPanelOpen] = useState(false);
   const [activeItem, setActiveItem] = useState(null);
   const [qty, setQty] = useState(1);
   const [chosen, setChosen] = useState(null);
 
-  // Cart (demo)
   const [cart, setCart] = useState([]);
 
   const cartCount = cart.reduce((sum, x) => sum + (x.qty || 0), 0);
@@ -107,7 +102,6 @@ export default function App() {
 
   function closePanel() {
     setPanelOpen(false);
-    // keep activeItem around briefly? not needed
   }
 
   function setModeForItem(mode) {
@@ -175,7 +169,9 @@ export default function App() {
           <div className="miniCart">
             <div className="miniCartLine">
               <span className="miniCartLabel">Cart</span>
-              <span className="miniCartValue">{cartCount} item{cartCount === 1 ? "" : "s"}</span>
+              <span className="miniCartValue">
+                {cartCount} item{cartCount === 1 ? "" : "s"}
+              </span>
             </div>
             <div className="miniCartLine">
               <span className="miniCartLabel">Total</span>
@@ -227,6 +223,21 @@ export default function App() {
                   ? "Delivery address is asked at checkout — browse freely now."
                   : "Pickup details are confirmed at checkout — browse freely now."}
               </div>
+
+              {/* Hours (new) */}
+              {location?.hours?.length ? (
+                <div className="hours">
+                  <div className="hoursTitle">Hours</div>
+                  <div className="hoursGrid">
+                    {location.hours.map((h) => (
+                      <div key={h.days} className="hoursRow">
+                        <span className="hoursDays">{h.days}</span>
+                        <span className="hoursTime">{h.hours}</span>
+                      </div>
+                    ))}
+                  </div>
+                </div>
+              ) : null}
             </div>
           </div>
 
@@ -240,7 +251,8 @@ export default function App() {
           <div className="menuHeader">
             <h1>Menu</h1>
             <div className="menuSub">
-              Chunked for fast browsing: <b>Top Picks</b>, <b>Classics</b>, <b>Build Your Own</b>
+              Chunked for fast browsing: <b>Top Picks</b>, <b>Classics</b>,{" "}
+              <b>Build Your Own</b>, <b>Extras</b>, <b>Specials</b>
             </div>
           </div>
 
@@ -253,10 +265,20 @@ export default function App() {
 
               <div className="row">
                 {section.items.map((item) => (
-                  <button key={item.id} className="itemCard" type="button" onClick={() => openItem(item)}>
+                  <button
+                    key={item.id}
+                    className="itemCard"
+                    type="button"
+                    onClick={() => openItem(item)}
+                  >
                     <div className="itemMedia">
                       {item.media?.image ? (
-                        <img className="itemImg" src={item.media.image} alt={item.name} loading="lazy" />
+                        <img
+                          className="itemImg"
+                          src={item.media.image}
+                          alt={item.name}
+                          loading="lazy"
+                        />
                       ) : (
                         <div className="itemImgPlaceholder">G&amp;G</div>
                       )}
@@ -283,7 +305,11 @@ export default function App() {
               <div className="cartTitle">Cart (demo)</div>
               <div className="cartSub">This is a working cart. Checkout comes next.</div>
             </div>
-            <button className="btnPrimary" type="button" onClick={() => alert("Checkout is next (Phase 2).")}>
+            <button
+              className="btnPrimary"
+              type="button"
+              onClick={() => alert("Checkout is next (Phase 2).")}
+            >
               Checkout (next)
             </button>
           </div>
@@ -310,7 +336,6 @@ export default function App() {
 
       <footer className="footer">Powered by FlavorStream Buffet</footer>
 
-      {/* Slide-up panel */}
       <div className={panelOpen ? "overlay on" : "overlay"} onClick={closePanel} role="presentation" />
 
       <aside className={panelOpen ? "panel on" : "panel"} aria-hidden={!panelOpen}>
@@ -353,7 +378,6 @@ export default function App() {
                 </div>
               </div>
 
-              {/* Options (only show when Customize) */}
               {chosen?.mode === "custom" && (activeItem.optionGroups || []).length > 0 && (
                 <div className="options">
                   {(activeItem.optionGroups || []).map((g) => (
@@ -421,7 +445,7 @@ export default function App() {
                   <button className="qtyBtn" type="button" onClick={() => setQty((n) => clampQty(n + 1))}>
                     +
                   </button>
-                </div>
+                  </div>
 
                 <button className="btnPrimary wide" type="button" onClick={addToCart}>
                   Add to Cart • {money(activeLinePrice)}
