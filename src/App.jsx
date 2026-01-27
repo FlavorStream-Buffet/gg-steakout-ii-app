@@ -1,460 +1,258 @@
-// src/App.jsx
 import { useMemo, useState } from "react";
-import { LOCATIONS, getMenuForLocationId } from "./data/menu.js";
+import menuData from "./data/menu";
+
+const LOCATIONS = [
+  {
+    id: "downtown",
+    name: "Downtown — 350 East Main Street, Rochester, NY",
+    hours: [
+      { day: "Mon–Wed", time: "6:30am–7pm" },
+      { day: "Thurs–Sat", time: "6:30am–9pm" },
+      { day: "Sunday", time: "Closed" },
+    ],
+  },
+];
 
 function money(n) {
-  return `$${Number(n || 0).toFixed(2)}`;
+  const v = Number(n || 0);
+  return `$${v.toFixed(2)}`;
 }
 
-function clampQty(n) {
-  if (Number.isNaN(n)) return 1;
-  return Math.max(1, Math.min(99, n));
-}
-
-function buildLineLabel(item, chosen) {
-  const parts = [];
-  const mode = chosen?.mode || "original";
-  parts.push(mode === "original" ? "G&G Original" : "Customized");
-
-  if (chosen?.single) {
-    for (const [groupId, optId] of Object.entries(chosen.single)) {
-      const g = (item.optionGroups || []).find((x) => x.id === groupId);
-      const o = g?.options?.find((x) => x.id === optId);
-      if (g && o) parts.push(`${g.label}: ${o.label}`);
-    }
-  }
-
-  if (chosen?.multi) {
-    for (const [groupId, optIds] of Object.entries(chosen.multi)) {
-      const g = (item.optionGroups || []).find((x) => x.id === groupId);
-      if (!g) continue;
-      const labels = (optIds || [])
-        .map((id) => g.options.find((x) => x.id === id))
-        .filter(Boolean)
-        .map((o) => o.label);
-      if (labels.length) parts.push(`${g.label}: ${labels.join(", ")}`);
-    }
-  }
-
-  return parts.join(" • ");
-}
-
-function calcOptionsDelta(item, chosen) {
-  let delta = 0;
-  const groups = item.optionGroups || [];
-  const single = chosen?.single || {};
-  const multi = chosen?.multi || {};
-
-  for (const g of groups) {
-    if (g.type === "single") {
-      const picked = single[g.id];
-      const opt = g.options.find((o) => o.id === picked);
-      if (opt?.priceDelta) delta += opt.priceDelta;
-    } else if (g.type === "multi") {
-      const pickedList = multi[g.id] || [];
-      for (const id of pickedList) {
-        const opt = g.options.find((o) => o.id === id);
-        if (opt?.priceDelta) delta += opt.priceDelta;
-      }
-    }
-  }
-  return delta;
-}
-
-function defaultChosenForItem(item) {
-  const chosen = { mode: "original", single: {}, multi: {} };
-  for (const g of item.optionGroups || []) {
-    if (g.type === "single") {
-      const def = g.options.find((o) => o.default) || g.options[0];
-      if (def) chosen.single[g.id] = def.id;
-    }
-  }
-  return chosen;
+function normalizeMenu(menu) {
+  // Accepts either:
+  // 1) { categories: [{ name, items: [...] }, ...] }
+  // 2) { sections: [...] }
+  // 3) already an array of sections
+  if (!menu) return [];
+  if (Array.isArray(menu)) return menu;
+  if (Array.isArray(menu.categories)) return menu.categories;
+  if (Array.isArray(menu.sections)) return menu.sections;
+  return [];
 }
 
 export default function App() {
-  const [orderMode, setOrderMode] = useState("delivery"); // Delivery default (locked)
-  const [locationId, setLocationId] = useState(LOCATIONS[0]?.id || "loc-1");
+  const [fulfillment, setFulfillment] = useState("delivery"); // delivery | pickup
+  const [locationId, setLocationId] = useState(LOCATIONS[0].id);
+
+  const [activeItem, setActiveItem] = useState(null);
+  const [mode, setMode] = useState("original"); // original | customize
+
+  const [cartCount, setCartCount] = useState(0);
+  const [cartTotal, setCartTotal] = useState(0);
 
   const location = useMemo(
     () => LOCATIONS.find((l) => l.id === locationId) || LOCATIONS[0],
     [locationId]
   );
 
-  const menu = useMemo(() => getMenuForLocationId(locationId), [locationId]);
+  const sections = useMemo(() => normalizeMenu(menuData), []);
 
-  const [panelOpen, setPanelOpen] = useState(false);
-  const [activeItem, setActiveItem] = useState(null);
-  const [qty, setQty] = useState(1);
-  const [chosen, setChosen] = useState(null);
-
-  const [cart, setCart] = useState([]);
-
-  const cartCount = cart.reduce((sum, x) => sum + (x.qty || 0), 0);
-  const cartTotal = cart.reduce((sum, x) => sum + (x.lineTotal || 0), 0);
-
-  function openItem(item) {
-    setActiveItem(item);
-    setQty(1);
-    setChosen(defaultChosenForItem(item));
-    setPanelOpen(true);
+  function addToCart(item) {
+    const price = Number(item?.price || 0);
+    setCartCount((c) => c + 1);
+    setCartTotal((t) => t + price);
+    setActiveItem(null);
+    setMode("original");
   }
-
-  function closePanel() {
-    setPanelOpen(false);
-  }
-
-  function setModeForItem(mode) {
-    setChosen((prev) => ({ ...(prev || {}), mode }));
-  }
-
-  function toggleMulti(groupId, optId) {
-    setChosen((prev) => {
-      const next = { ...(prev || {}) };
-      next.multi = { ...(next.multi || {}) };
-      const list = new Set(next.multi[groupId] || []);
-      if (list.has(optId)) list.delete(optId);
-      else list.add(optId);
-      next.multi[groupId] = Array.from(list);
-      return next;
-    });
-  }
-
-  function pickSingle(groupId, optId) {
-    setChosen((prev) => {
-      const next = { ...(prev || {}) };
-      next.single = { ...(next.single || {}) };
-      next.single[groupId] = optId;
-      return next;
-    });
-  }
-
-  function addToCart() {
-    if (!activeItem) return;
-
-    const optionsDelta = calcOptionsDelta(activeItem, chosen);
-    const unit = (activeItem.price || 0) + optionsDelta;
-    const q = clampQty(qty);
-
-    const line = {
-      id: crypto?.randomUUID ? crypto.randomUUID() : String(Date.now()),
-      itemId: activeItem.id,
-      name: activeItem.name,
-      qty: q,
-      unitPrice: unit,
-      lineTotal: unit * q,
-      detail: buildLineLabel(activeItem, chosen),
-    };
-
-    setCart((prev) => [line, ...prev]);
-    closePanel();
-  }
-
-  const activeOptionsDelta = activeItem ? calcOptionsDelta(activeItem, chosen) : 0;
-  const activeUnitPrice = activeItem ? (activeItem.price || 0) + activeOptionsDelta : 0;
-  const activeLinePrice = activeUnitPrice * clampQty(qty);
 
   return (
-    <div className="page">
-      <header className="top">
+    <div className="container">
+      {/* Header */}
+      <div className="header">
         <div className="brand">
-          <img className="logo" src="/logo.png" alt="G & G Steakout II" />
-          <div className="brandText">
-            <div className="title">G &amp; G Steakout II</div>
-            <div className="subtitle">Mobile ordering — coming online</div>
-          </div>
-
-          <div className="spacer" />
-
-          <div className="miniCart">
-            <div className="miniCartLine">
-              <span className="miniCartLabel">Cart</span>
-              <span className="miniCartValue">
-                {cartCount} item{cartCount === 1 ? "" : "s"}
-              </span>
-            </div>
-            <div className="miniCartLine">
-              <span className="miniCartLabel">Total</span>
-              <span className="miniCartValue">{money(cartTotal)}</span>
-            </div>
+          <img src="/logo.png" alt="G&G Steakout II" />
+          <div className="titles">
+            <div className="name">G&amp;G Steakout II</div>
+            <div className="tag">Mobile Ordering</div>
           </div>
         </div>
-      </header>
+        <div style={{ marginLeft: "auto" }} className="pill">
+          <span className="badge mustard">
+            {fulfillment === "delivery" ? "Delivery" : "Pickup"}
+          </span>
+        </div>
+      </div>
 
-      <main className="shell">
-        <section className="card controls">
-          <div className="controlsRow">
-            <div className="seg">
-              <button
-                className={orderMode === "delivery" ? "segBtn on" : "segBtn"}
-                type="button"
-                onClick={() => setOrderMode("delivery")}
-              >
-                Delivery
-              </button>
-              <button
-                className={orderMode === "pickup" ? "segBtn on" : "segBtn"}
-                type="button"
-                onClick={() => setOrderMode("pickup")}
-              >
-                Pickup
-              </button>
-            </div>
+      {/* Fulfillment toggle */}
+      <div className="toggleRow">
+        <button
+          className={`toggle ${fulfillment === "delivery" ? "active" : ""}`}
+          onClick={() => setFulfillment("delivery")}
+        >
+          Delivery
+        </button>
+        <button
+          className={`toggle ${fulfillment === "pickup" ? "active" : ""}`}
+          onClick={() => setFulfillment("pickup")}
+        >
+          Pickup
+        </button>
+      </div>
 
-            <div className="location">
-              <label className="label" htmlFor="loc">
-                Location
-              </label>
-              <select
-                id="loc"
-                className="select"
-                value={locationId}
-                onChange={(e) => setLocationId(e.target.value)}
-              >
-                {LOCATIONS.map((l) => (
-                  <option key={l.id} value={l.id}>
-                    {l.name}
-                  </option>
-                ))}
-              </select>
+      {/* Location + Hours */}
+      <div className="locationBlock">
+        <div className="locationInner">
+          <div className="locationLabel">Location</div>
 
-              <div className="hint">
-                {orderMode === "delivery"
-                  ? "Delivery address is asked at checkout — browse freely now."
-                  : "Pickup details are confirmed at checkout — browse freely now."}
-              </div>
-
-              {/* Hours (new) */}
-              {location?.hours?.length ? (
-                <div className="hours">
-                  <div className="hoursTitle">Hours</div>
-                  <div className="hoursGrid">
-                    {location.hours.map((h) => (
-                      <div key={h.days} className="hoursRow">
-                        <span className="hoursDays">{h.days}</span>
-                        <span className="hoursTime">{h.hours}</span>
-                      </div>
-                    ))}
-                  </div>
-                </div>
-              ) : null}
-            </div>
+          <div className="locationRow">
+            <select value={locationId} onChange={(e) => setLocationId(e.target.value)}>
+              {LOCATIONS.map((l) => (
+                <option key={l.id} value={l.id}>
+                  {l.name}
+                </option>
+              ))}
+            </select>
           </div>
 
-          <div className="controlsRow2">
-            <div className="pill">No login needed to view the menu</div>
-            <div className="pill subtle">Reorder + Curbside will be added after accounts</div>
-          </div>
-        </section>
-
-        <section className="card menu">
-          <div className="menuHeader">
-            <h1>Menu</h1>
-            <div className="menuSub">
-              Chunked for fast browsing: <b>Top Picks</b>, <b>Classics</b>,{" "}
-              <b>Build Your Own</b>, <b>Extras</b>, <b>Specials</b>
+          <div className="storeHours">
+            <div className="hoursTitle">
+              <span>Store Hours</span>
+              <span className="badge ember">Downtown</span>
             </div>
-          </div>
-
-          {menu.sections.map((section) => (
-            <div key={section.id} className="section">
-              <div className="sectionTop">
-                <div className="sectionTitle">{section.title}</div>
-                <div className="sectionNote">{section.note}</div>
-              </div>
-
-              <div className="row">
-                {section.items.map((item) => (
-                  <button
-                    key={item.id}
-                    className="itemCard"
-                    type="button"
-                    onClick={() => openItem(item)}
-                  >
-                    <div className="itemMedia">
-                      {item.media?.image ? (
-                        <img
-                          className="itemImg"
-                          src={item.media.image}
-                          alt={item.name}
-                          loading="lazy"
-                        />
-                      ) : (
-                        <div className="itemImgPlaceholder">G&amp;G</div>
-                      )}
-                    </div>
-
-                    <div className="itemBody">
-                      <div className="itemName">{item.name}</div>
-                      <div className="itemDesc">{item.description}</div>
-                      <div className="itemBottom">
-                        <div className="price">{money(item.price)}</div>
-                        <div className="tap">Tap</div>
-                      </div>
-                    </div>
-                  </button>
-                ))}
-              </div>
-            </div>
-          ))}
-        </section>
-
-        <section className="card cart">
-          <div className="cartTop">
-            <div>
-              <div className="cartTitle">Cart (demo)</div>
-              <div className="cartSub">This is a working cart. Checkout comes next.</div>
-            </div>
-            <button
-              className="btnPrimary"
-              type="button"
-              onClick={() => alert("Checkout is next (Phase 2).")}
-            >
-              Checkout (next)
-            </button>
-          </div>
-
-          {cart.length === 0 ? (
-            <div className="empty">Your cart is empty — tap an item to begin.</div>
-          ) : (
-            <div className="cartList">
-              {cart.map((line) => (
-                <div key={line.id} className="cartLine">
-                  <div className="cartLeft">
-                    <div className="cartName">
-                      {line.qty}× {line.name}
-                    </div>
-                    <div className="cartDetail">{line.detail}</div>
-                  </div>
-                  <div className="cartRight">{money(line.lineTotal)}</div>
+            <div className="hoursLines">
+              {location.hours.map((h) => (
+                <div className="line" key={h.day}>
+                  <span className="day">{h.day}</span>
+                  <span className="time">{h.time}</span>
                 </div>
               ))}
             </div>
-          )}
-        </section>
-      </main>
+          </div>
+        </div>
+      </div>
 
-      <footer className="footer">Powered by FlavorStream Buffet</footer>
+      {/* Menu Sections (horizontal swipe chunks) */}
+      {sections.map((section) => (
+        <div key={section.name || section.title || Math.random()}>
+          <div className="sectionTitle">
+            <h2>{section.name || section.title || "Menu"}</h2>
+            <div className="sub">Tap an item to customize</div>
+          </div>
 
-      <div className={panelOpen ? "overlay on" : "overlay"} onClick={closePanel} role="presentation" />
-
-      <aside className={panelOpen ? "panel on" : "panel"} aria-hidden={!panelOpen}>
-        <div className="panelHandle" />
-        <div className="panelInner">
-          {activeItem && (
-            <>
-              <div className="panelTop">
-                <div>
-                  <div className="panelTitle">{activeItem.name}</div>
-                  <div className="panelDesc">{activeItem.description}</div>
+          <div className="rowScroller">
+            {(section.items || []).map((item) => (
+              <div
+                key={item.id || item.name}
+                className="card"
+                onClick={() => {
+                  setActiveItem(item);
+                  setMode("original");
+                }}
+              >
+                <div className="cardInner">
+                  <div className="kicker">{section.name || section.title || "Category"}</div>
+                  <div className="title">{item.name}</div>
+                  <div className="meta">
+                    <span className="muted">{item.desc || item.description || ""}</span>
+                    <span className="accent">{money(item.price)}</span>
+                  </div>
                 </div>
-                <button className="x" type="button" onClick={closePanel} aria-label="Close">
-                  ✕
+              </div>
+            ))}
+          </div>
+        </div>
+      ))}
+
+      {/* Bottom Cart */}
+      <div className="bottomBar">
+        <div className="inner">
+          <button className="cartPill" onClick={() => alert("Checkout coming soon.")}>
+            <div className="left">
+              <div className="label">
+                Cart ({cartCount}) — {fulfillment === "delivery" ? "Delivery" : "Pickup"}
+              </div>
+              <div className="sub">Checkout placeholder</div>
+            </div>
+            <div className="total">{money(cartTotal)}</div>
+          </button>
+        </div>
+      </div>
+
+      {/* Slide-up Item Sheet */}
+      {activeItem && (
+        <div className="sheetOverlay" onClick={() => setActiveItem(null)}>
+          <div className="sheet" onClick={(e) => e.stopPropagation()}>
+            <div className="sheetHeader">
+              <div className="titleWrap">
+                <div className="itemTitle">{activeItem.name}</div>
+                <div className="itemSub">{activeItem.desc || activeItem.description || ""}</div>
+              </div>
+              <button className="closeBtn" onClick={() => setActiveItem(null)} aria-label="Close">
+                ✕
+              </button>
+            </div>
+
+            <div className="sheetBody">
+              <div className="modeTabs">
+                <button
+                  className={`tab ${mode === "original" ? "active" : ""}`}
+                  onClick={() => setMode("original")}
+                >
+                  G&amp;G Original
+                </button>
+                <button
+                  className={`tab ${mode === "customize" ? "active" : ""}`}
+                  onClick={() => setMode("customize")}
+                >
+                  Customize
                 </button>
               </div>
 
-              <div className="panelMode">
-                <div className="label">How do you want it?</div>
-                <div className="seg">
-                  <button
-                    className={chosen?.mode === "original" ? "segBtn on" : "segBtn"}
-                    type="button"
-                    onClick={() => setModeForItem("original")}
-                  >
-                    G&amp;G Original
-                  </button>
-                  <button
-                    className={chosen?.mode === "custom" ? "segBtn on" : "segBtn"}
-                    type="button"
-                    onClick={() => setModeForItem("custom")}
-                  >
-                    Customize
-                  </button>
-                </div>
-                <div className="hint">
-                  {chosen?.mode === "original"
-                    ? "Fastest ticket. Classic prep."
-                    : "We’ll only show options that matter — clean and easy."}
-                </div>
-              </div>
-
-              {chosen?.mode === "custom" && (activeItem.optionGroups || []).length > 0 && (
-                <div className="options">
-                  {(activeItem.optionGroups || []).map((g) => (
-                    <div key={g.id} className="group">
-                      <div className="groupTop">
-                        <div className="groupTitle">{g.label}</div>
-                        <div className="groupRule">
-                          {g.required ? "Required" : "Optional"} • {g.type === "single" ? "Pick one" : "Pick any"}
-                        </div>
-                      </div>
-
-                      {g.type === "single" ? (
-                        <div className="optList">
-                          {g.options.map((o) => {
-                            const picked = chosen?.single?.[g.id] === o.id;
-                            return (
-                              <button
-                                key={o.id}
-                                type="button"
-                                className={picked ? "opt on" : "opt"}
-                                onClick={() => pickSingle(g.id, o.id)}
-                              >
-                                <span className="optLabel">{o.label}</span>
-                                <span className="optRight">
-                                  {o.priceDelta ? <span className="delta">+{money(o.priceDelta)}</span> : null}
-                                  <span className="dot">{picked ? "●" : "○"}</span>
-                                </span>
-                              </button>
-                            );
-                          })}
-                        </div>
-                      ) : (
-                        <div className="optList">
-                          {g.options.map((o) => {
-                            const list = chosen?.multi?.[g.id] || [];
-                            const picked = list.includes(o.id);
-                            return (
-                              <button
-                                key={o.id}
-                                type="button"
-                                className={picked ? "opt on" : "opt"}
-                                onClick={() => toggleMulti(g.id, o.id)}
-                              >
-                                <span className="optLabel">{o.label}</span>
-                                <span className="optRight">
-                                  {o.priceDelta ? <span className="delta">+{money(o.priceDelta)}</span> : null}
-                                  <span className="dot">{picked ? "☑" : "☐"}</span>
-                                </span>
-                              </button>
-                            );
-                          })}
-                        </div>
-                      )}
-                    </div>
-                  ))}
-                </div>
-              )}
-
-              <div className="panelBottom">
-                <div className="qty">
-                  <button className="qtyBtn" type="button" onClick={() => setQty((n) => clampQty(n - 1))}>
-                    –
-                  </button>
-                  <div className="qtyNum">{clampQty(qty)}</div>
-                  <button className="qtyBtn" type="button" onClick={() => setQty((n) => clampQty(n + 1))}>
-                    +
-                  </button>
+              {mode === "customize" ? (
+                <div className="optionGroup">
+                  <div className="groupTitle">
+                    Options <span className="hint">Demo controls</span>
                   </div>
 
-                <button className="btnPrimary wide" type="button" onClick={addToCart}>
-                  Add to Cart • {money(activeLinePrice)}
-                </button>
-              </div>
-            </>
-          )}
+                  <div className="optionRow">
+                    <div className="choice">
+                      <div className="name">Extra Sauce</div>
+                      <div className="right">
+                        <span className="muted2">+ $0.50</span>
+                        <input type="checkbox" />
+                      </div>
+                    </div>
+
+                    <div className="choice">
+                      <div className="name">Add Cheese</div>
+                      <div className="right">
+                        <span className="muted2">+ $0.75</span>
+                        <input type="checkbox" />
+                      </div>
+                    </div>
+
+                    <div className="choice">
+                      <div className="name">Spice Level</div>
+                      <div className="right">
+                        <label className="muted2">
+                          Mild <input type="radio" name="spice" defaultChecked />
+                        </label>
+                        <label className="muted2">
+                          Hot <input type="radio" name="spice" />
+                        </label>
+                      </div>
+                    </div>
+                  </div>
+                </div>
+              ) : (
+                <div className="notice">
+                  This item is shown as the <b>G&amp;G Original</b>. Switch to <b>Customize</b> to
+                  reveal options.
+                </div>
+              )}
+            </div>
+
+            <div className="sheetFooter">
+              <button className="btn ghost" onClick={() => setActiveItem(null)}>
+                Cancel
+              </button>
+              <button className="btn primary" onClick={() => addToCart(activeItem)}>
+                Add to Cart — {money(activeItem.price)}
+              </button>
+            </div>
+          </div>
         </div>
-      </aside>
+      )}
     </div>
   );
 }
