@@ -256,7 +256,7 @@ select:focus, input:focus{
   box-shadow: var(--glow-pickle);
 }
 
-/* HOURS (this is the “append hours CSS” part you asked for) */
+/* HOURS */
 .storeHours{
   margin-top: 2px;
   padding: 10px 12px;
@@ -333,7 +333,7 @@ select:focus, input:focus{
   color: var(--muted2);
 }
 
-/* Horizontal swipe rows (chunked menu sections) */
+/* Horizontal swipe rows */
 .rowScroller{
   display:flex;
   gap:12px;
@@ -402,7 +402,7 @@ select:focus, input:focus{
   font-weight: 800;
 }
 
-/* Item list look (if you already have list rows) */
+/* List */
 .list{
   display:flex;
   flex-direction:column;
@@ -512,7 +512,7 @@ select:focus, input:focus{
   color: rgba(244,183,64,.98);
 }
 
-/* Slide-up panel (item detail) */
+/* Slide-up panel */
 .sheetOverlay{
   position: fixed;
   inset: 0;
@@ -580,7 +580,7 @@ select:focus, input:focus{
   gap:12px;
 }
 
-/* Toggle inside sheet (Original / Customize) */
+/* Toggle inside sheet */
 .modeTabs{
   display:flex;
   gap:10px;
@@ -677,7 +677,7 @@ select:focus, input:focus{
   flex:1;
 }
 
-/* Badges / little highlights */
+/* Badges */
 .badge{
   display:inline-flex;
   align-items:center;
@@ -707,7 +707,7 @@ select:focus, input:focus{
   background: rgba(73,194,116,.12);
 }
 
-/* Toast / notices if you have them */
+/* Notices */
 .notice{
   border-radius: var(--radius2);
   border: 1px solid rgba(255,90,31,.22);
