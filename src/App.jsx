@@ -1,5 +1,5 @@
 import { useMemo, useState } from "react";
-import menuData from "./data/menu";
+import menuData from "./data/menu.js";
 
 const LOCATIONS = [
   {
@@ -19,14 +19,20 @@ function money(n) {
 }
 
 function normalizeMenu(menu) {
-  // Accepts either:
-  // 1) { categories: [{ name, items: [...] }, ...] }
-  // 2) { sections: [...] }
-  // 3) already an array of sections
   if (!menu) return [];
   if (Array.isArray(menu)) return menu;
   if (Array.isArray(menu.categories)) return menu.categories;
   if (Array.isArray(menu.sections)) return menu.sections;
+  if (Array.isArray(menu.menu)) return menu.menu;
+  if (Array.isArray(menu.data)) return menu.data;
+  return [];
+}
+
+function normalizeItems(section) {
+  if (!section) return [];
+  if (Array.isArray(section.items)) return section.items;
+  if (Array.isArray(section.products)) return section.products;
+  if (Array.isArray(section.list)) return section.list;
   return [];
 }
 
@@ -66,6 +72,7 @@ export default function App() {
             <div className="tag">Mobile Ordering</div>
           </div>
         </div>
+
         <div style={{ marginLeft: "auto" }} className="pill">
           <span className="badge mustard">
             {fulfillment === "delivery" ? "Delivery" : "Pickup"}
@@ -73,7 +80,7 @@ export default function App() {
         </div>
       </div>
 
-      {/* Fulfillment toggle */}
+      {/* Delivery / Pickup */}
       <div className="toggleRow">
         <button
           className={`toggle ${fulfillment === "delivery" ? "active" : ""}`}
@@ -109,6 +116,7 @@ export default function App() {
               <span>Store Hours</span>
               <span className="badge ember">Downtown</span>
             </div>
+
             <div className="hoursLines">
               {location.hours.map((h) => (
                 <div className="line" key={h.day}>
@@ -121,37 +129,48 @@ export default function App() {
         </div>
       </div>
 
-      {/* Menu Sections (horizontal swipe chunks) */}
-      {sections.map((section) => (
-        <div key={section.name || section.title || Math.random()}>
-          <div className="sectionTitle">
-            <h2>{section.name || section.title || "Menu"}</h2>
-            <div className="sub">Tap an item to customize</div>
-          </div>
+      {/* Menu Sections */}
+      {sections.map((section, idx) => {
+        const title = section?.name || section?.title || section?.category || `Menu ${idx + 1}`;
+        const items = normalizeItems(section);
 
-          <div className="rowScroller">
-            {(section.items || []).map((item) => (
-              <div
-                key={item.id || item.name}
-                className="card"
-                onClick={() => {
-                  setActiveItem(item);
-                  setMode("original");
-                }}
-              >
-                <div className="cardInner">
-                  <div className="kicker">{section.name || section.title || "Category"}</div>
-                  <div className="title">{item.name}</div>
-                  <div className="meta">
-                    <span className="muted">{item.desc || item.description || ""}</span>
-                    <span className="accent">{money(item.price)}</span>
+        return (
+          <div key={`${title}-${idx}`}>
+            <div className="sectionTitle">
+              <h2>{title}</h2>
+              <div className="sub">Tap an item to customize</div>
+            </div>
+
+            <div className="rowScroller">
+              {items.map((item, j) => (
+                <div
+                  key={`${item?.id || item?.name || "item"}-${j}`}
+                  className="card"
+                  onClick={() => {
+                    setActiveItem(item);
+                    setMode("original");
+                  }}
+                >
+                  <div className="cardInner">
+                    <div className="kicker">{title}</div>
+                    <div className="title">{item?.name || "Item"}</div>
+                    <div className="meta">
+                      <span className="muted">{item?.desc || item?.description || ""}</span>
+                      <span className="accent">{money(item?.price)}</span>
+                    </div>
                   </div>
                 </div>
-              </div>
-            ))}
+              ))}
+
+              {items.length === 0 && (
+                <div className="notice">
+                  No items found for <b>{title}</b>. (Menu data shape mismatch — safe fallback.)
+                </div>
+              )}
+            </div>
           </div>
-        </div>
-      ))}
+        );
+      })}
 
       {/* Bottom Cart */}
       <div className="bottomBar">
@@ -168,14 +187,14 @@ export default function App() {
         </div>
       </div>
 
-      {/* Slide-up Item Sheet */}
+      {/* Slide-up item panel */}
       {activeItem && (
         <div className="sheetOverlay" onClick={() => setActiveItem(null)}>
           <div className="sheet" onClick={(e) => e.stopPropagation()}>
             <div className="sheetHeader">
               <div className="titleWrap">
-                <div className="itemTitle">{activeItem.name}</div>
-                <div className="itemSub">{activeItem.desc || activeItem.description || ""}</div>
+                <div className="itemTitle">{activeItem?.name || "Item"}</div>
+                <div className="itemSub">{activeItem?.desc || activeItem?.description || ""}</div>
               </div>
               <button className="closeBtn" onClick={() => setActiveItem(null)} aria-label="Close">
                 ✕
@@ -247,7 +266,7 @@ export default function App() {
                 Cancel
               </button>
               <button className="btn primary" onClick={() => addToCart(activeItem)}>
-                Add to Cart — {money(activeItem.price)}
+                Add to Cart — {money(activeItem?.price)}
               </button>
             </div>
           </div>
