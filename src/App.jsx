@@ -1,45 +1,35 @@
 import { useMemo, useState } from "react";
-
-const LOCATIONS = [
-  {
-    id: "downtown",
-    name: "Downtown - 350 East Main Street, Rochester, NY",
-    hours: [
-      { day: "Mon-Wed", time: "6:30am-7pm" },
-      { day: "Thu-Sat", time: "6:30am-9pm" },
-      { day: "Sunday", time: "Closed" },
-    ],
-  },
-];
-
-const SECTIONS = [
-  {
-    name: "Specials",
-    items: [
-      { id: "sp1", name: "Daily Special (Demo)", desc: "Placeholder item", price: 9.99 },
-      { id: "sp2", name: "Wing Combo (Demo)", desc: "Placeholder item", price: 12.49 },
-    ],
-  },
-  {
-    name: "Extras",
-    items: [
-      { id: "ex1", name: "Side of Sauce (Demo)", desc: "Placeholder item", price: 0.75 },
-      { id: "ex2", name: "Onion Rings (Demo)", desc: "Placeholder item", price: 4.99 },
-    ],
-  },
-];
+import { LOCATIONS, getMenuForLocationId } from "./data/menu.js";
 
 function money(n) {
   const v = Number(n || 0);
   return "$" + v.toFixed(2);
 }
 
+function normalizeMenu(menu) {
+  if (!menu) return [];
+  if (Array.isArray(menu)) return menu;
+  if (Array.isArray(menu.sections)) return menu.sections;
+  if (Array.isArray(menu.categories)) return menu.categories;
+  return [];
+}
+
+function getHoursLines(location) {
+  const hrs = (location && location.hours) || [];
+  // supports either {days, hours} or {day, time}
+  return hrs.map((h) => ({
+    left: h.days || h.day || "",
+    right: h.hours || h.time || "",
+    key: (h.days || h.day || "") + "|" + (h.hours || h.time || ""),
+  }));
+}
+
 export default function App() {
-  const [fulfillment, setFulfillment] = useState("delivery");
-  const [locationId, setLocationId] = useState(LOCATIONS[0].id);
+  const [fulfillment, setFulfillment] = useState("delivery"); // delivery | pickup
+  const [locationId, setLocationId] = useState(LOCATIONS[0]?.id || "loc-1");
 
   const [activeItem, setActiveItem] = useState(null);
-  const [mode, setMode] = useState("original");
+  const [mode, setMode] = useState("original"); // original | customize
 
   const [cartCount, setCartCount] = useState(0);
   const [cartTotal, setCartTotal] = useState(0);
@@ -48,16 +38,24 @@ export default function App() {
     return LOCATIONS.find((l) => l.id === locationId) || LOCATIONS[0];
   }, [locationId]);
 
+  const hoursLines = useMemo(() => getHoursLines(location), [location]);
+
+  const menuForLoc = useMemo(() => getMenuForLocationId(locationId), [locationId]);
+  const sections = useMemo(() => normalizeMenu(menuForLoc), [menuForLoc]);
+
   function addToCart(item) {
-    const price = Number(item && item.price ? item.price : 0);
+    const price = Number(item?.price || 0);
     setCartCount((c) => c + 1);
     setCartTotal((t) => t + price);
     setActiveItem(null);
     setMode("original");
   }
 
+  const headerBadge = fulfillment === "delivery" ? "Delivery" : "Pickup";
+
   return (
     <div className="container">
+      {/* Header */}
       <div className="header">
         <div className="brand">
           <img src="/logo.png" alt="G&G Steakout II" />
@@ -68,27 +66,27 @@ export default function App() {
         </div>
 
         <div style={{ marginLeft: "auto" }} className="pill">
-          <span className="badge mustard">
-            {fulfillment === "delivery" ? "Delivery" : "Pickup"}
-          </span>
+          <span className="badge mustard">{headerBadge}</span>
         </div>
       </div>
 
+      {/* Fulfillment toggle */}
       <div className="toggleRow">
         <button
-          className={"toggle " + (fulfillment === "delivery" ? "active" : "")}
+          className={`toggle ${fulfillment === "delivery" ? "active" : ""}`}
           onClick={() => setFulfillment("delivery")}
         >
           Delivery
         </button>
         <button
-          className={"toggle " + (fulfillment === "pickup" ? "active" : "")}
+          className={`toggle ${fulfillment === "pickup" ? "active" : ""}`}
           onClick={() => setFulfillment("pickup")}
         >
           Pickup
         </button>
       </div>
 
+      {/* Location + Hours */}
       <div className="locationBlock">
         <div className="locationInner">
           <div className="locationLabel">Location</div>
@@ -110,10 +108,10 @@ export default function App() {
             </div>
 
             <div className="hoursLines">
-              {location.hours.map((h) => (
-                <div className="line" key={h.day}>
-                  <span className="day">{h.day}</span>
-                  <span className="time">{h.time}</span>
+              {hoursLines.map((h) => (
+                <div className="line" key={h.key}>
+                  <span className="day">{h.left}</span>
+                  <span className="time">{h.right}</span>
                 </div>
               ))}
             </div>
@@ -121,43 +119,50 @@ export default function App() {
         </div>
       </div>
 
-      {SECTIONS.map((section) => (
-        <div key={section.name}>
-          <div className="sectionTitle">
-            <h2>{section.name}</h2>
-            <div className="sub">Tap an item to customize</div>
-          </div>
+      {/* Menu Sections (horizontal swipe chunks) */}
+      {sections.map((section) => {
+        const sectionTitle = section.title || section.name || "Menu";
+        const sectionNote = section.note || "";
 
-          <div className="rowScroller">
-            {section.items.map((item) => (
-              <div
-                key={item.id}
-                className="card"
-                onClick={() => {
-                  setActiveItem(item);
-                  setMode("original");
-                }}
-              >
-                <div className="cardInner">
-                  <div className="kicker">{section.name}</div>
-                  <div className="title">{item.name}</div>
-                  <div className="meta">
-                    <span className="muted">{item.desc}</span>
-                    <span className="accent">{money(item.price)}</span>
+        return (
+          <div key={section.id || sectionTitle}>
+            <div className="sectionTitle">
+              <h2>{sectionTitle}</h2>
+              <div className="sub">{sectionNote ? sectionNote : "Tap an item to customize"}</div>
+            </div>
+
+            <div className="rowScroller">
+              {(section.items || []).map((item) => (
+                <div
+                  key={item.id || item.name}
+                  className="card"
+                  onClick={() => {
+                    setActiveItem(item);
+                    setMode("original");
+                  }}
+                >
+                  <div className="cardInner">
+                    <div className="kicker">{sectionTitle}</div>
+                    <div className="title">{item.name}</div>
+                    <div className="meta">
+                      <span className="muted">{item.description || item.desc || ""}</span>
+                      <span className="accent">{money(item.price)}</span>
+                    </div>
                   </div>
                 </div>
-              </div>
-            ))}
+              ))}
+            </div>
           </div>
-        </div>
-      ))}
+        );
+      })}
 
+      {/* Bottom Cart */}
       <div className="bottomBar">
         <div className="inner">
           <button className="cartPill" onClick={() => alert("Checkout coming soon.")}>
             <div className="left">
               <div className="label">
-                Cart ({cartCount}) - {fulfillment === "delivery" ? "Delivery" : "Pickup"}
+                Cart ({cartCount}) — {headerBadge}
               </div>
               <div className="sub">Checkout placeholder</div>
             </div>
@@ -166,29 +171,30 @@ export default function App() {
         </div>
       </div>
 
+      {/* Slide-up Item Sheet */}
       {activeItem && (
         <div className="sheetOverlay" onClick={() => setActiveItem(null)}>
           <div className="sheet" onClick={(e) => e.stopPropagation()}>
             <div className="sheetHeader">
               <div className="titleWrap">
                 <div className="itemTitle">{activeItem.name}</div>
-                <div className="itemSub">{activeItem.desc}</div>
+                <div className="itemSub">{activeItem.description || activeItem.desc || ""}</div>
               </div>
               <button className="closeBtn" onClick={() => setActiveItem(null)} aria-label="Close">
-                X
+                ✕
               </button>
             </div>
 
             <div className="sheetBody">
               <div className="modeTabs">
                 <button
-                  className={"tab " + (mode === "original" ? "active" : "")}
+                  className={`tab ${mode === "original" ? "active" : ""}`}
                   onClick={() => setMode("original")}
                 >
                   G&amp;G Original
                 </button>
                 <button
-                  className={"tab " + (mode === "customize" ? "active" : "")}
+                  className={`tab ${mode === "customize" ? "active" : ""}`}
                   onClick={() => setMode("customize")}
                 >
                   Customize
@@ -198,25 +204,12 @@ export default function App() {
               {mode === "customize" ? (
                 <div className="optionGroup">
                   <div className="groupTitle">
-                    Options <span className="hint">Demo controls</span>
+                    Options <span className="hint">Wiring next</span>
                   </div>
 
-                  <div className="optionRow">
-                    <div className="choice">
-                      <div className="name">Extra Sauce</div>
-                      <div className="right">
-                        <span className="muted2">+ $0.50</span>
-                        <input type="checkbox" />
-                      </div>
-                    </div>
-
-                    <div className="choice">
-                      <div className="name">Add Cheese</div>
-                      <div className="right">
-                        <span className="muted2">+ $0.75</span>
-                        <input type="checkbox" />
-                      </div>
-                    </div>
+                  <div className="notice">
+                    This item’s option groups are already in <b>menu.js</b>. Next step is wiring
+                    these controls so selections affect the price and cart.
                   </div>
                 </div>
               ) : (
@@ -232,7 +225,7 @@ export default function App() {
                 Cancel
               </button>
               <button className="btn primary" onClick={() => addToCart(activeItem)}>
-                Add to Cart - {money(activeItem.price)}
+                Add to Cart — {money(activeItem.price)}
               </button>
             </div>
           </div>
