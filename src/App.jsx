@@ -1,60 +1,55 @@
 import { useMemo, useState } from "react";
-import menuData from "./data/menu.js";
 
 const LOCATIONS = [
   {
     id: "downtown",
-    name: "Downtown — 350 East Main Street, Rochester, NY",
+    name: "Downtown - 350 East Main Street, Rochester, NY",
     hours: [
-      { day: "Mon–Wed", time: "6:30am–7pm" },
-      { day: "Thurs–Sat", time: "6:30am–9pm" },
+      { day: "Mon-Wed", time: "6:30am-7pm" },
+      { day: "Thu-Sat", time: "6:30am-9pm" },
       { day: "Sunday", time: "Closed" },
+    ],
+  },
+];
+
+const SECTIONS = [
+  {
+    name: "Specials",
+    items: [
+      { id: "sp1", name: "Daily Special (Demo)", desc: "Placeholder item", price: 9.99 },
+      { id: "sp2", name: "Wing Combo (Demo)", desc: "Placeholder item", price: 12.49 },
+    ],
+  },
+  {
+    name: "Extras",
+    items: [
+      { id: "ex1", name: "Side of Sauce (Demo)", desc: "Placeholder item", price: 0.75 },
+      { id: "ex2", name: "Onion Rings (Demo)", desc: "Placeholder item", price: 4.99 },
     ],
   },
 ];
 
 function money(n) {
   const v = Number(n || 0);
-  return `$${v.toFixed(2)}`;
-}
-
-function normalizeMenu(menu) {
-  if (!menu) return [];
-  if (Array.isArray(menu)) return menu;
-  if (Array.isArray(menu.categories)) return menu.categories;
-  if (Array.isArray(menu.sections)) return menu.sections;
-  if (Array.isArray(menu.menu)) return menu.menu;
-  if (Array.isArray(menu.data)) return menu.data;
-  return [];
-}
-
-function normalizeItems(section) {
-  if (!section) return [];
-  if (Array.isArray(section.items)) return section.items;
-  if (Array.isArray(section.products)) return section.products;
-  if (Array.isArray(section.list)) return section.list;
-  return [];
+  return "$" + v.toFixed(2);
 }
 
 export default function App() {
-  const [fulfillment, setFulfillment] = useState("delivery"); // delivery | pickup
+  const [fulfillment, setFulfillment] = useState("delivery");
   const [locationId, setLocationId] = useState(LOCATIONS[0].id);
 
   const [activeItem, setActiveItem] = useState(null);
-  const [mode, setMode] = useState("original"); // original | customize
+  const [mode, setMode] = useState("original");
 
   const [cartCount, setCartCount] = useState(0);
   const [cartTotal, setCartTotal] = useState(0);
 
-  const location = useMemo(
-    () => LOCATIONS.find((l) => l.id === locationId) || LOCATIONS[0],
-    [locationId]
-  );
-
-  const sections = useMemo(() => normalizeMenu(menuData), []);
+  const location = useMemo(() => {
+    return LOCATIONS.find((l) => l.id === locationId) || LOCATIONS[0];
+  }, [locationId]);
 
   function addToCart(item) {
-    const price = Number(item?.price || 0);
+    const price = Number(item && item.price ? item.price : 0);
     setCartCount((c) => c + 1);
     setCartTotal((t) => t + price);
     setActiveItem(null);
@@ -63,7 +58,6 @@ export default function App() {
 
   return (
     <div className="container">
-      {/* Header */}
       <div className="header">
         <div className="brand">
           <img src="/logo.png" alt="G&G Steakout II" />
@@ -80,23 +74,21 @@ export default function App() {
         </div>
       </div>
 
-      {/* Delivery / Pickup */}
       <div className="toggleRow">
         <button
-          className={`toggle ${fulfillment === "delivery" ? "active" : ""}`}
+          className={"toggle " + (fulfillment === "delivery" ? "active" : "")}
           onClick={() => setFulfillment("delivery")}
         >
           Delivery
         </button>
         <button
-          className={`toggle ${fulfillment === "pickup" ? "active" : ""}`}
+          className={"toggle " + (fulfillment === "pickup" ? "active" : "")}
           onClick={() => setFulfillment("pickup")}
         >
           Pickup
         </button>
       </div>
 
-      {/* Location + Hours */}
       <div className="locationBlock">
         <div className="locationInner">
           <div className="locationLabel">Location</div>
@@ -129,56 +121,43 @@ export default function App() {
         </div>
       </div>
 
-      {/* Menu Sections */}
-      {sections.map((section, idx) => {
-        const title = section?.name || section?.title || section?.category || `Menu ${idx + 1}`;
-        const items = normalizeItems(section);
+      {SECTIONS.map((section) => (
+        <div key={section.name}>
+          <div className="sectionTitle">
+            <h2>{section.name}</h2>
+            <div className="sub">Tap an item to customize</div>
+          </div>
 
-        return (
-          <div key={`${title}-${idx}`}>
-            <div className="sectionTitle">
-              <h2>{title}</h2>
-              <div className="sub">Tap an item to customize</div>
-            </div>
-
-            <div className="rowScroller">
-              {items.map((item, j) => (
-                <div
-                  key={`${item?.id || item?.name || "item"}-${j}`}
-                  className="card"
-                  onClick={() => {
-                    setActiveItem(item);
-                    setMode("original");
-                  }}
-                >
-                  <div className="cardInner">
-                    <div className="kicker">{title}</div>
-                    <div className="title">{item?.name || "Item"}</div>
-                    <div className="meta">
-                      <span className="muted">{item?.desc || item?.description || ""}</span>
-                      <span className="accent">{money(item?.price)}</span>
-                    </div>
+          <div className="rowScroller">
+            {section.items.map((item) => (
+              <div
+                key={item.id}
+                className="card"
+                onClick={() => {
+                  setActiveItem(item);
+                  setMode("original");
+                }}
+              >
+                <div className="cardInner">
+                  <div className="kicker">{section.name}</div>
+                  <div className="title">{item.name}</div>
+                  <div className="meta">
+                    <span className="muted">{item.desc}</span>
+                    <span className="accent">{money(item.price)}</span>
                   </div>
                 </div>
-              ))}
-
-              {items.length === 0 && (
-                <div className="notice">
-                  No items found for <b>{title}</b>. (Menu data shape mismatch — safe fallback.)
-                </div>
-              )}
-            </div>
+              </div>
+            ))}
           </div>
-        );
-      })}
+        </div>
+      ))}
 
-      {/* Bottom Cart */}
       <div className="bottomBar">
         <div className="inner">
           <button className="cartPill" onClick={() => alert("Checkout coming soon.")}>
             <div className="left">
               <div className="label">
-                Cart ({cartCount}) — {fulfillment === "delivery" ? "Delivery" : "Pickup"}
+                Cart ({cartCount}) - {fulfillment === "delivery" ? "Delivery" : "Pickup"}
               </div>
               <div className="sub">Checkout placeholder</div>
             </div>
@@ -187,30 +166,29 @@ export default function App() {
         </div>
       </div>
 
-      {/* Slide-up item panel */}
       {activeItem && (
         <div className="sheetOverlay" onClick={() => setActiveItem(null)}>
           <div className="sheet" onClick={(e) => e.stopPropagation()}>
             <div className="sheetHeader">
               <div className="titleWrap">
-                <div className="itemTitle">{activeItem?.name || "Item"}</div>
-                <div className="itemSub">{activeItem?.desc || activeItem?.description || ""}</div>
+                <div className="itemTitle">{activeItem.name}</div>
+                <div className="itemSub">{activeItem.desc}</div>
               </div>
               <button className="closeBtn" onClick={() => setActiveItem(null)} aria-label="Close">
-                ✕
+                X
               </button>
             </div>
 
             <div className="sheetBody">
               <div className="modeTabs">
                 <button
-                  className={`tab ${mode === "original" ? "active" : ""}`}
+                  className={"tab " + (mode === "original" ? "active" : "")}
                   onClick={() => setMode("original")}
                 >
                   G&amp;G Original
                 </button>
                 <button
-                  className={`tab ${mode === "customize" ? "active" : ""}`}
+                  className={"tab " + (mode === "customize" ? "active" : "")}
                   onClick={() => setMode("customize")}
                 >
                   Customize
@@ -239,18 +217,6 @@ export default function App() {
                         <input type="checkbox" />
                       </div>
                     </div>
-
-                    <div className="choice">
-                      <div className="name">Spice Level</div>
-                      <div className="right">
-                        <label className="muted2">
-                          Mild <input type="radio" name="spice" defaultChecked />
-                        </label>
-                        <label className="muted2">
-                          Hot <input type="radio" name="spice" />
-                        </label>
-                      </div>
-                    </div>
                   </div>
                 </div>
               ) : (
@@ -266,7 +232,7 @@ export default function App() {
                 Cancel
               </button>
               <button className="btn primary" onClick={() => addToCart(activeItem)}>
-                Add to Cart — {money(activeItem?.price)}
+                Add to Cart - {money(activeItem.price)}
               </button>
             </div>
           </div>
