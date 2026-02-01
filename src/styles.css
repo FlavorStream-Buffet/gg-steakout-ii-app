@@ -1,7 +1,6 @@
 /* src/styles.css — G&G Steakout II
-   Keep current watermark brightness (good),
-   but move the logo UP so it's centered better on the page.
-   Keep location/hours glassy so it doesn't "white-out" the logo.
+   Keep watermark brightness + position.
+   Fix: UI boxes were too white → make them glassy, darker-tinted, more “real” (not cartoon).
 */
 
 :root{
@@ -17,7 +16,7 @@
   --mustard:#f4b740;
   --pickle:#2fae63;
 
-  --border:rgba(0,0,0,.12);
+  --border:rgba(0,0,0,.14);
   --shadow: 0 14px 34px rgba(0,0,0,.14);
   --shadow2: 0 8px 18px rgba(0,0,0,.10);
 
@@ -26,6 +25,12 @@
 
   --tap: 44px;
   --max: 980px;
+
+  /* NEW: glass tint + common glass surface */
+  --glass: rgba(32, 26, 18, .14);      /* warm smoked tint */
+  --glass2: rgba(32, 26, 18, .10);
+  --glass3: rgba(32, 26, 18, .18);
+  --glassBorder: rgba(0,0,0,.18);
 }
 
 *{ box-sizing:border-box; }
@@ -46,7 +51,7 @@ body{
   -moz-osx-font-smoothing: grayscale;
 }
 
-/* ✅ Stationary background logo (brightness stays the same; just moved UP) */
+/* Stationary background logo */
 body::before{
   content:"";
   position: fixed;
@@ -57,22 +62,20 @@ body::before{
   background-image: url("/logo.png");
   background-repeat: no-repeat;
 
-  /* KEY CHANGE: move it up so it's not sitting low */
+  /* moved up (kept) */
   background-position: center 32%;
 
-  /* Same “page size / poster” behavior */
+  /* poster fit */
   background-size: min(520px, 86vw) auto;
 
-  /* KEEP brightness exactly as you said you liked */
+  /* brightness kept */
   opacity: .14;
 
   filter: saturate(1.05) contrast(1.02);
 }
 
-/* App sits above the watermark */
 #root{ position: relative; z-index: 1; }
 
-/* Layout */
 .container{
   max-width: var(--max);
   margin: 0 auto;
@@ -91,7 +94,6 @@ body::before{
   display:none !important;
 }
 
-/* Links */
 a{ color:inherit; text-decoration:none; }
 a:hover{ text-decoration:none; }
 
@@ -101,11 +103,12 @@ a:hover{ text-decoration:none; }
   align-items:center;
   gap:12px;
   padding: 12px 12px;
-  border:1px solid var(--border);
+  border:1px solid var(--glassBorder);
   border-radius: var(--radius2);
 
-  background: rgba(255,255,255,.56);
-  backdrop-filter: blur(14px);
+  /* LESS WHITE: smoked glass */
+  background: linear-gradient(180deg, rgba(255,255,255,.24), rgba(255,255,255,.10));
+  backdrop-filter: blur(16px);
 
   box-shadow: var(--shadow2);
 }
@@ -118,21 +121,20 @@ a:hover{ text-decoration:none; }
 }
 
 .brand img{
-  width:58px;
-  height:58px;
+  width:64px;
+  height:64px;
   object-fit:contain;
-  border-radius: 14px;
-  background: rgba(255,255,255,.55);
-  border:1px solid rgba(0,0,0,.10);
-  padding:8px;
+  border-radius: 16px;
+
+  /* LESS WHITE */
+  background: rgba(255,255,255,.20);
+  backdrop-filter: blur(16px);
+
+  border:1px solid rgba(0,0,0,.14);
+  padding:10px;
 }
 
-.brand .titles{
-  display:flex;
-  flex-direction:column;
-  min-width:0;
-}
-
+.brand .titles{ display:flex; flex-direction:column; min-width:0; }
 .brand .titles .name{
   font-weight:1000;
   letter-spacing:.2px;
@@ -142,7 +144,6 @@ a:hover{ text-decoration:none; }
   overflow:hidden;
   text-overflow:ellipsis;
 }
-
 .brand .titles .tag{
   font-size: 12px;
   color: var(--muted);
@@ -151,16 +152,18 @@ a:hover{ text-decoration:none; }
   text-overflow:ellipsis;
 }
 
-/* Pill */
+/* Pills */
 .pill{
   display:inline-flex;
   align-items:center;
   gap:8px;
   padding: 8px 10px;
   border-radius: 999px;
-  border:1px solid rgba(0,0,0,.10);
-  background: rgba(255,255,255,.50);
-  backdrop-filter: blur(14px);
+  border:1px solid rgba(0,0,0,.14);
+
+  /* LESS WHITE */
+  background: rgba(255,255,255,.18);
+  backdrop-filter: blur(16px);
 }
 
 /* Buttons */
@@ -180,23 +183,28 @@ button, .btn{
   min-height: var(--tap);
   padding: 10px 14px;
   border-radius: 14px;
-  border: 1px solid rgba(0,0,0,.12);
-  background: rgba(255,255,255,.62);
-  backdrop-filter: blur(14px);
+  border: 1px solid rgba(0,0,0,.16);
+
+  /* LESS WHITE */
+  background: rgba(255,255,255,.18);
+  backdrop-filter: blur(16px);
+
   cursor:pointer;
   transition: transform .08s ease, border-color .14s ease, background .14s ease, box-shadow .14s ease;
 }
 .btn:active{ transform: translateY(1px); }
+
 .btn.primary{
   border-color: rgba(255,90,31,.28);
-  background: rgba(255,255,255,.70);
+  background: rgba(255,255,255,.22);
   box-shadow: 0 0 0 1px rgba(255,90,31,.14), 0 14px 26px rgba(255,90,31,.08);
 }
-.btn.ghost{ background: rgba(255,255,255,.52); }
+.btn.ghost{ background: rgba(255,255,255,.14); }
 .btn.small{ min-height: 36px; padding: 8px 12px; border-radius: 12px; font-size: 13px; }
 
-/* Toggle */
+/* ✅ Delivery / Pickup — FIX THE WHITENESS HERE */
 .toggleRow{ display:flex; gap:10px; margin-top: 12px; }
+
 .toggle{
   flex:1;
   display:flex;
@@ -204,27 +212,36 @@ button, .btn{
   justify-content:center;
   min-height: var(--tap);
   border-radius: 14px;
-  border:1px solid rgba(0,0,0,.12);
-  background: rgba(255,255,255,.56);
-  backdrop-filter: blur(14px);
-  color: rgba(0,0,0,.70);
+  border:1px solid rgba(0,0,0,.18);
+
+  /* darker smoked glass (not white) */
+  background: linear-gradient(180deg, rgba(32,26,18,.18), rgba(255,255,255,.08));
+  backdrop-filter: blur(18px);
+
+  color: rgba(0,0,0,.78);
   cursor:pointer;
   transition: .14s ease;
 }
+
 .toggle.active{
-  color: rgba(0,0,0,.92);
-  border-color: rgba(244,183,64,.45);
-  background: rgba(255,255,255,.68);
-  box-shadow: 0 0 0 1px rgba(244,183,64,.18);
+  color: rgba(0,0,0,.94);
+  border-color: rgba(244,183,64,.50);
+
+  /* active still glass, just warmer */
+  background: linear-gradient(180deg, rgba(244,183,64,.20), rgba(32,26,18,.10));
+  box-shadow: 0 0 0 1px rgba(244,183,64,.20);
 }
 
-/* ✅ Location: glassy (not white paint) */
+/* ✅ Location block — FIX THE WHITENESS HERE */
 .locationBlock{
   margin-top: 12px;
   border-radius: var(--radius2);
-  border: 1px solid rgba(0,0,0,.12);
-  background: rgba(255,255,255,.34);
-  backdrop-filter: blur(18px);
+  border: 1px solid rgba(0,0,0,.18);
+
+  /* darker smoked glass */
+  background: linear-gradient(180deg, rgba(32,26,18,.18), rgba(255,255,255,.08));
+  backdrop-filter: blur(20px);
+
   box-shadow: var(--shadow2);
   overflow:hidden;
 }
@@ -239,17 +256,22 @@ button, .btn{
 .locationLabel{ font-size: 12px; color: var(--muted); letter-spacing: .2px; }
 .locationRow{ display:flex; gap:10px; align-items:center; }
 
+/* Dropdown / inputs */
 select, input{
   width:100%;
   min-height: var(--tap);
   border-radius: 14px;
-  border: 1px solid rgba(0,0,0,.14);
-  background: rgba(255,255,255,.54);
-  backdrop-filter: blur(14px);
+  border: 1px solid rgba(0,0,0,.20);
+
+  /* darker than before */
+  background: rgba(255,255,255,.14);
+  backdrop-filter: blur(18px);
+
   color: var(--text);
   padding: 10px 12px;
   outline:none;
 }
+
 select:focus, input:focus{
   border-color: rgba(47,174,99,.45);
   box-shadow: 0 0 0 1px rgba(47,174,99,.16), 0 14px 26px rgba(47,174,99,.08);
@@ -260,9 +282,11 @@ select:focus, input:focus{
   margin-top: 2px;
   padding: 10px 12px;
   border-radius: 14px;
-  border: 1px solid rgba(255,90,31,.22);
-  background: rgba(255,255,255,.34);
-  backdrop-filter: blur(18px);
+  border: 1px solid rgba(255,90,31,.24);
+
+  /* same smoked glass so it blends */
+  background: rgba(255,255,255,.10);
+  backdrop-filter: blur(20px);
 }
 
 .storeHours .hoursTitle{
@@ -290,11 +314,11 @@ select:focus, input:focus{
   justify-content:space-between;
   gap:12px;
   padding: 6px 0;
-  border-bottom: 1px dashed rgba(0,0,0,.14);
+  border-bottom: 1px dashed rgba(0,0,0,.16);
 }
 .storeHours .hoursLines .line:last-child{ border-bottom:none; }
 .storeHours .hoursLines .day{ color: rgba(0,0,0,.86); font-weight: 900; }
-.storeHours .hoursLines .time{ color: rgba(0,0,0,.65); }
+.storeHours .hoursLines .time{ color: rgba(0,0,0,.66); }
 
 /* Section header */
 .sectionTitle{
@@ -317,7 +341,7 @@ select:focus, input:focus{
   -webkit-overflow-scrolling: touch;
 }
 .rowScroller::-webkit-scrollbar{ height: 8px; }
-.rowScroller::-webkit-scrollbar-thumb{ background: rgba(0,0,0,.12); border-radius: 999px; }
+.rowScroller::-webkit-scrollbar-thumb{ background: rgba(0,0,0,.16); border-radius: 999px; }
 .rowScroller::-webkit-scrollbar-track{ background: transparent; }
 
 .card{
@@ -326,26 +350,25 @@ select:focus, input:focus{
   max-width: 220px;
   flex: 0 0 auto;
   border-radius: var(--radius2);
-  border: 1px solid rgba(0,0,0,.14);
-  background: rgba(255,255,255,.40);
-  backdrop-filter: blur(18px);
+  border: 1px solid rgba(0,0,0,.18);
+
+  /* darker glass */
+  background: linear-gradient(180deg, rgba(32,26,18,.16), rgba(255,255,255,.08));
+  backdrop-filter: blur(20px);
+
   box-shadow: var(--shadow2);
   overflow:hidden;
   cursor:pointer;
   transition: transform .10s ease, border-color .14s ease, box-shadow .14s ease;
 }
+
 .card:active{ transform: translateY(1px); }
 .card:hover{ border-color: rgba(255,90,31,.22); box-shadow: var(--shadow); }
 
-.card .cardInner{
-  padding: 12px;
-  display:flex;
-  flex-direction:column;
-  gap:8px;
-}
+.card .cardInner{ padding: 12px; display:flex; flex-direction:column; gap:8px; }
 .card .kicker{
   font-size: 11px;
-  color: rgba(0,0,0,.55);
+  color: rgba(0,0,0,.60);
   letter-spacing:.25px;
   text-transform: uppercase;
 }
@@ -353,7 +376,7 @@ select:focus, input:focus{
 .card .meta{
   margin-top: 2px;
   font-size: 12px;
-  color: rgba(0,0,0,.68);
+  color: rgba(0,0,0,.72);
   display:flex;
   align-items:center;
   justify-content:space-between;
@@ -366,9 +389,12 @@ select:focus, input:focus{
   position: fixed;
   left: 0; right: 0; bottom: 0;
   padding: 10px 12px calc(10px + env(safe-area-inset-bottom));
-  background: rgba(251,246,238,.72);
-  backdrop-filter: blur(18px);
-  border-top: 1px solid rgba(0,0,0,.12);
+
+  /* slightly darker glass so it feels “grounded” */
+  background: rgba(251,246,238,.64);
+  backdrop-filter: blur(20px);
+
+  border-top: 1px solid rgba(0,0,0,.14);
   z-index: 20;
 }
 .bottomBar .inner{
@@ -389,14 +415,16 @@ select:focus, input:focus{
   padding: 10px 14px;
   border-radius: 16px;
   border: 1px solid rgba(255,90,31,.22);
-  background: rgba(255,255,255,.50);
-  backdrop-filter: blur(18px);
+
+  background: rgba(255,255,255,.16);
+  backdrop-filter: blur(20px);
+
   box-shadow: 0 0 0 1px rgba(255,90,31,.12), 0 14px 26px rgba(255,90,31,.08);
 }
 .cartPill .left{ display:flex; flex-direction:column; gap:2px; }
 .cartPill .label{ font-weight: 1000; letter-spacing: .2px; font-size: 13px; }
-.cartPill .sub{ font-size: 12px; color: rgba(0,0,0,.70); }
-.cartPill .total{ font-weight: 1000; font-size: 14px; color: rgba(0,0,0,.90); }
+.cartPill .sub{ font-size: 12px; color: rgba(0,0,0,.74); }
+.cartPill .total{ font-weight: 1000; font-size: 14px; color: rgba(0,0,0,.92); }
 
 /* Badges */
 .badge{
@@ -405,10 +433,12 @@ select:focus, input:focus{
   justify-content:center;
   padding: 4px 10px;
   border-radius: 999px;
-  border: 1px solid rgba(0,0,0,.12);
-  background: rgba(255,255,255,.55);
+  border: 1px solid rgba(0,0,0,.16);
+
+  background: rgba(255,255,255,.14);
   backdrop-filter: blur(18px);
-  color: rgba(0,0,0,.82);
+
+  color: rgba(0,0,0,.86);
   font-size: 11px;
   font-weight: 900;
   letter-spacing:.2px;
