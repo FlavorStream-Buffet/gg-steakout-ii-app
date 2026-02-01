@@ -3,27 +3,20 @@
    Visual direction: REAL restaurant menu-board feel.
    - Light, inviting parchment background (not drab)
    - Brushed-steel “plates” for featured + cards
-   - Full-width fixed hero banner, content scrolls over it
+   - Logo becomes a PAGE BACKGROUND watermark (not chopped)
+   - Hero banner stays for the nice “steel/drum” vibe, but logo is no longer confined to it
 */
 
 :root{
-  /* Light “menu board” base */
-  --bg0:#fbf6ee;      /* parchment */
-  --bg1:#f3eadb;      /* warm fade */
+  --bg0:#fbf6ee;
+  --bg1:#f3eadb;
   --panel:rgba(255,255,255,.78);
   --panel2:rgba(255,255,255,.90);
 
-  /* Steel */
-  --steel0: rgba(255,255,255,.72);
-  --steel1: rgba(240,240,240,.82);
-  --steel2: rgba(0,0,0,.06);
-
-  /* Text */
   --text:#161616;
   --muted:#4f4f55;
   --muted2:#6a6a70;
 
-  /* Brand accents (vibrant, not blue-template) */
   --ember:#ff5a1f;
   --ember2:#ff7a3a;
   --mustard:#f4b740;
@@ -47,46 +40,75 @@
   --glow-pickle: 0 0 0 1px rgba(47,174,99,.18), 0 14px 26px rgba(47,174,99,.10);
 }
 
-/* Base reset */
 *{ box-sizing:border-box; }
 html, body{ height:100%; }
+
 body{
   margin:0;
   font-family: ui-sans-serif, system-ui, -apple-system, Segoe UI, Roboto, Helvetica, Arial, "Apple Color Emoji","Segoe UI Emoji";
   color:var(--text);
+
+  /* ✅ LOGO AS PAGE BACKGROUND (never chopped) */
   background:
     radial-gradient(1000px 520px at 15% 0%, rgba(255,90,31,.14), transparent 58%),
     radial-gradient(900px 480px at 85% 0%, rgba(244,183,64,.18), transparent 60%),
     radial-gradient(900px 520px at 60% 110%, rgba(47,174,99,.12), transparent 62%),
+    url("/logo.png"),
     linear-gradient(180deg, var(--bg0), var(--bg1));
+
+  background-repeat: no-repeat, no-repeat, no-repeat, no-repeat, no-repeat;
+
+  /* Position logo in the center-top-ish so it reads like a storefront backdrop */
+  background-position:
+    15% 0%,
+    85% 0%,
+    60% 110%,
+    center 120px,
+    0 0;
+
+  /* Keep logo big but subtle */
+  background-size:
+    auto,
+    auto,
+    auto,
+    min(860px, 92vw),
+    auto;
+
+  /* The logo layer is too bold unless we fade it.
+     We do that with a pseudo overlay below (body::before) */
   -webkit-font-smoothing: antialiased;
   -moz-osx-font-smoothing: grayscale;
 }
+
+/* Fade the background logo so it feels like a watermark */
+body::before{
+  content:"";
+  position: fixed;
+  inset: 0;
+  pointer-events: none;
+  background:
+    linear-gradient(180deg, rgba(251,246,238,.72) 0%, rgba(251,246,238,.35) 35%, rgba(251,246,238,.80) 100%);
+  z-index: 0;
+}
+
+/* Everything in the app should sit above the watermark overlay */
+#root{ position: relative; z-index: 1; }
 
 /* Links */
 a{ color:inherit; text-decoration:none; }
 a:hover{ text-decoration:none; }
 
-/* Layout helpers */
+/* Container: room for fixed hero banner */
 .container{
   max-width: var(--max);
   margin: 0 auto;
-  /* IMPORTANT: room for the fixed hero banner */
   padding: 230px 14px 92px;
 }
-
 @media (min-width: 720px){
   .container{ padding: 260px 18px 92px; }
 }
 
-/* Full-bleed helper */
-.fullBleed{
-  width:100vw;
-  margin-left: calc(50% - 50vw);
-  margin-right: calc(50% - 50vw);
-}
-
-/* HERO BANNER (fixed background, content scrolls over) */
+/* Fixed hero banner (kept for “steel/drum” vibe) */
 .heroBanner{
   position: fixed;
   left:0; right:0; top:0;
@@ -96,12 +118,10 @@ a:hover{ text-decoration:none; }
   background:
     radial-gradient(1000px 400px at 50% 0%, rgba(255,90,31,.18), transparent 60%),
     radial-gradient(900px 420px at 75% 10%, rgba(244,183,64,.20), transparent 62%),
-    linear-gradient(180deg, rgba(255,255,255,.92), rgba(245,235,220,.92));
+    linear-gradient(180deg, rgba(255,255,255,.88), rgba(245,235,220,.78));
   box-shadow: 0 18px 40px rgba(0,0,0,.14);
   overflow:hidden;
 }
-
-/* “Steel drum / steel plate” texture illusion */
 .heroBanner::before{
   content:"";
   position:absolute;
@@ -112,28 +132,11 @@ a:hover{ text-decoration:none; }
   transform: rotate(-2deg);
 }
 
-/* Big logo watermark */
-.heroLogoWrap{
-  position:absolute;
-  inset:0;
-  display:flex;
-  align-items:center;
-  justify-content:center;
-  pointer-events:none;
-  padding: 16px;
-}
+/* KEEP these classes because App.jsx references them.
+   But we make the banner logo invisible now (we moved logo to body background). */
+.heroLogoWrap{ display:none; }
+.heroLogo{ display:none; }
 
-.heroLogo{
-  max-width: min(760px, 92vw);
-  width: 100%;
-  height: auto;
-  opacity: .22;                 /* watermark */
-  filter:
-    drop-shadow(0 18px 24px rgba(0,0,0,.16))
-    saturate(1.05);
-}
-
-/* Top row content inside banner (small “status” chips) */
 .heroTopRow{
   position: relative;
   z-index: 2;
@@ -144,12 +147,10 @@ a:hover{ text-decoration:none; }
   justify-content: flex-end;
   gap:10px;
 }
-
 @media (min-width: 720px){
   .heroTopRow{ padding: 14px 18px 0; }
 }
 
-/* Weld seam / heat line at bottom */
 .heroSeam{
   position:absolute;
   left:0; right:0; bottom:0;
@@ -158,7 +159,6 @@ a:hover{ text-decoration:none; }
   opacity:.85;
 }
 
-/* Small pill accents */
 .pill{
   display:inline-flex;
   align-items:center;
@@ -170,7 +170,6 @@ a:hover{ text-decoration:none; }
   backdrop-filter: blur(10px);
 }
 
-/* Buttons */
 button, .btn{
   appearance:none;
   border:none;
@@ -189,41 +188,20 @@ button, .btn{
   border-radius: 14px;
   border: 1px solid rgba(0,0,0,.12);
   background: rgba(255,255,255,.78);
-  box-shadow: none;
   cursor:pointer;
   transition: transform .08s ease, border-color .14s ease, background .14s ease, box-shadow .14s ease;
 }
-
 .btn:active{ transform: translateY(1px); }
-
 .btn.primary{
   border-color: rgba(255,90,31,.30);
   background: linear-gradient(180deg, rgba(255,90,31,.18), rgba(255,255,255,.80));
   box-shadow: var(--glow-ember);
 }
+.btn.ghost{ background: rgba(255,255,255,.62); }
+.btn.small{ min-height: 36px; padding: 8px 12px; border-radius: 12px; font-size: 13px; }
 
-.btn.primary:hover{
-  border-color: rgba(255,122,58,.40);
-}
-
-.btn.ghost{
-  background: rgba(255,255,255,.62);
-}
-
-.btn.small{
-  min-height: 36px;
-  padding: 8px 12px;
-  border-radius: 12px;
-  font-size: 13px;
-}
-
-/* Toggle group (Delivery / Pickup) */
-.toggleRow{
-  display:flex;
-  gap:10px;
-  margin-top: 12px;
-}
-
+/* Toggle */
+.toggleRow{ display:flex; gap:10px; margin-top: 12px; }
 .toggle{
   flex:1;
   display:flex;
@@ -237,7 +215,6 @@ button, .btn{
   cursor:pointer;
   transition: .14s ease;
 }
-
 .toggle.active{
   color: rgba(0,0,0,.92);
   border-color: rgba(244,183,64,.40);
@@ -245,7 +222,7 @@ button, .btn{
   box-shadow: var(--glow-mustard);
 }
 
-/* Location selector block */
+/* Location */
 .locationBlock{
   margin-top: 12px;
   border-radius: var(--radius2);
@@ -255,25 +232,9 @@ button, .btn{
   box-shadow: var(--shadow2);
   overflow:hidden;
 }
-
-.locationInner{
-  padding: 12px 12px;
-  display:flex;
-  flex-direction:column;
-  gap:10px;
-}
-
-.locationLabel{
-  font-size: 12px;
-  color: var(--muted);
-  letter-spacing: .2px;
-}
-
-.locationRow{
-  display:flex;
-  gap:10px;
-  align-items:center;
-}
+.locationInner{ padding: 12px 12px; display:flex; flex-direction:column; gap:10px; }
+.locationLabel{ font-size: 12px; color: var(--muted); letter-spacing: .2px; }
+.locationRow{ display:flex; gap:10px; align-items:center; }
 
 select, input{
   width:100%;
@@ -286,13 +247,12 @@ select, input{
   outline:none;
   transition: border-color .14s ease, box-shadow .14s ease, background .14s ease;
 }
-
 select:focus, input:focus{
   border-color: rgba(47,174,99,.45);
   box-shadow: var(--glow-pickle);
 }
 
-/* HOURS */
+/* Hours */
 .storeHours{
   margin-top: 2px;
   padding: 10px 12px;
@@ -300,7 +260,6 @@ select:focus, input:focus{
   border: 1px solid rgba(255,90,31,.22);
   background: linear-gradient(180deg, rgba(255,90,31,.10), rgba(255,255,255,.80));
 }
-
 .storeHours .hoursTitle{
   display:flex;
   align-items:center;
@@ -310,7 +269,6 @@ select:focus, input:focus{
   font-size: 13px;
   letter-spacing:.2px;
 }
-
 .storeHours .hoursLines{
   margin-top: 8px;
   display:flex;
@@ -320,7 +278,6 @@ select:focus, input:focus{
   font-size: 13px;
   line-height: 1.25;
 }
-
 .storeHours .hoursLines .line{
   display:flex;
   justify-content:space-between;
@@ -329,15 +286,8 @@ select:focus, input:focus{
   border-bottom: 1px dashed rgba(0,0,0,.14);
 }
 .storeHours .hoursLines .line:last-child{ border-bottom:none; }
-
-.storeHours .hoursLines .day{
-  color: rgba(0,0,0,.86);
-  font-weight: 800;
-}
-
-.storeHours .hoursLines .time{
-  color: rgba(0,0,0,.65);
-}
+.storeHours .hoursLines .day{ color: rgba(0,0,0,.86); font-weight: 800; }
+.storeHours .hoursLines .time{ color: rgba(0,0,0,.65); }
 
 /* Section headers */
 .sectionTitle{
@@ -347,49 +297,25 @@ select:focus, input:focus{
   gap:10px;
   margin: 18px 2px 10px;
 }
+.sectionTitle h2{ margin:0; font-size: 16px; font-weight: 950; letter-spacing: .2px; }
+.sectionTitle .sub{ font-size: 12px; color: var(--muted2); }
 
-.sectionTitle h2{
-  margin:0;
-  font-size: 16px;
-  font-weight: 950;
-  letter-spacing: .2px;
-}
-
-.sectionTitle .sub{
-  font-size: 12px;
-  color: var(--muted2);
-}
-
-/* Featured “metal plates” grid */
-.featureGrid{
-  display:grid;
-  grid-template-columns: 1fr 1fr;
-  gap:12px;
-}
-
+/* Featured plates */
+.featureGrid{ display:grid; grid-template-columns: 1fr 1fr; gap:12px; }
 .metalPlate{
   border-radius: 18px;
   border: 1px solid rgba(0,0,0,.14);
   background:
     linear-gradient(135deg, rgba(255,255,255,.72), rgba(245,245,245,.60) 40%, rgba(0,0,0,.06)),
     radial-gradient(900px 240px at 50% 0%, rgba(255,90,31,.14), transparent 62%);
-  box-shadow:
-    inset 0 1px 0 rgba(255,255,255,.72),
-    0 14px 28px rgba(0,0,0,.14);
+  box-shadow: inset 0 1px 0 rgba(255,255,255,.72), 0 14px 28px rgba(0,0,0,.14);
   overflow:hidden;
   cursor:pointer;
   min-height: 126px;
 }
-
 .metalPlate:active{ transform: translateY(1px); }
-
-.plateTop{
-  display:flex;
-  align-items:center;
-  justify-content:space-between;
-  gap:10px;
-}
-
+.platePad{ padding: 14px 14px 12px; }
+.plateTop{ display:flex; align-items:center; justify-content:space-between; gap:10px; }
 .plateTitle{
   margin-top: 10px;
   font-weight: 1000;
@@ -399,22 +325,14 @@ select:focus, input:focus{
   color: rgba(0,0,0,.92);
   text-transform: uppercase;
 }
-
-.plateDesc{
-  margin-top: 8px;
-  color: rgba(0,0,0,.70);
-  font-size: 12px;
-}
-
-.platePad{ padding: 14px 14px 12px; }
-
+.plateDesc{ margin-top: 8px; color: rgba(0,0,0,.70); font-size: 12px; }
 .plateEdge{
   height: 10px;
   background: linear-gradient(90deg, rgba(255,90,31,.20), rgba(0,0,0,0), rgba(244,183,64,.20));
   border-top: 1px solid rgba(0,0,0,.10);
 }
 
-/* Horizontal swipe rows */
+/* Menu rows */
 .rowScroller{
   display:flex;
   gap:12px;
@@ -434,41 +352,17 @@ select:focus, input:focus{
   flex: 0 0 auto;
   border-radius: var(--radius2);
   border: 1px solid rgba(0,0,0,.14);
-  background:
-    linear-gradient(135deg, rgba(255,255,255,.82), rgba(245,245,245,.62) 45%, rgba(0,0,0,.06));
+  background: linear-gradient(135deg, rgba(255,255,255,.82), rgba(245,245,245,.62) 45%, rgba(0,0,0,.06));
   box-shadow: var(--shadow2);
   overflow:hidden;
   cursor:pointer;
   transition: transform .10s ease, border-color .14s ease, box-shadow .14s ease;
 }
-
 .card:active{ transform: translateY(1px); }
-
-.card:hover{
-  border-color: rgba(255,90,31,.22);
-  box-shadow: var(--shadow);
-}
-
-.card .cardInner{
-  padding: 12px 12px 12px;
-  display:flex;
-  flex-direction:column;
-  gap:8px;
-}
-
-.card .kicker{
-  font-size: 11px;
-  color: rgba(0,0,0,.55);
-  letter-spacing:.25px;
-  text-transform: uppercase;
-}
-
-.card .title{
-  font-size: 14px;
-  font-weight: 950;
-  line-height: 1.15;
-}
-
+.card:hover{ border-color: rgba(255,90,31,.22); box-shadow: var(--shadow); }
+.card .cardInner{ padding: 12px; display:flex; flex-direction:column; gap:8px; }
+.card .kicker{ font-size: 11px; color: rgba(0,0,0,.55); letter-spacing:.25px; text-transform: uppercase; }
+.card .title{ font-size: 14px; font-weight: 950; line-height: 1.15; }
 .card .meta{
   margin-top: 2px;
   font-size: 12px;
@@ -478,25 +372,18 @@ select:focus, input:focus{
   justify-content:space-between;
   gap:10px;
 }
+.card .meta .accent{ color: rgba(255,90,31,.95); font-weight: 950; }
 
-.card .meta .accent{
-  color: rgba(255,90,31,.95);
-  font-weight: 950;
-}
-
-/* Bottom bar cart */
+/* Cart bar */
 .bottomBar{
   position: fixed;
-  left: 0;
-  right: 0;
-  bottom: 0;
+  left: 0; right: 0; bottom: 0;
   padding: 10px 12px calc(10px + env(safe-area-inset-bottom));
   background: linear-gradient(180deg, rgba(251,246,238,.25), rgba(251,246,238,.92) 40%, rgba(251,246,238,.98));
   border-top: 1px solid rgba(0,0,0,.12);
   backdrop-filter: blur(10px);
   z-index: 20;
 }
-
 .bottomBar .inner{
   max-width: var(--max);
   margin: 0 auto;
@@ -505,7 +392,6 @@ select:focus, input:focus{
   justify-content:space-between;
   gap:10px;
 }
-
 .cartPill{
   display:flex;
   align-items:center;
@@ -519,31 +405,12 @@ select:focus, input:focus{
   background: linear-gradient(180deg, rgba(255,90,31,.14), rgba(255,255,255,.86));
   box-shadow: var(--glow-ember);
 }
+.cartPill .left{ display:flex; flex-direction:column; gap:2px; }
+.cartPill .label{ font-weight: 950; letter-spacing: .2px; font-size: 13px; }
+.cartPill .sub{ font-size: 12px; color: rgba(0,0,0,.70); }
+.cartPill .total{ font-weight: 1000; font-size: 14px; color: rgba(0,0,0,.90); }
 
-.cartPill .left{
-  display:flex;
-  flex-direction:column;
-  gap:2px;
-}
-
-.cartPill .label{
-  font-weight: 950;
-  letter-spacing: .2px;
-  font-size: 13px;
-}
-
-.cartPill .sub{
-  font-size: 12px;
-  color: rgba(0,0,0,.70);
-}
-
-.cartPill .total{
-  font-weight: 1000;
-  font-size: 14px;
-  color: rgba(0,0,0,.90);
-}
-
-/* Slide-up panel */
+/* Sheet */
 .sheetOverlay{
   position: fixed;
   inset: 0;
@@ -554,7 +421,6 @@ select:focus, input:focus{
   padding: 10px 10px calc(10px + env(safe-area-inset-bottom));
   z-index: 30;
 }
-
 .sheet{
   width: min(var(--max), 100%);
   border-radius: 22px 22px 18px 18px;
@@ -563,7 +429,6 @@ select:focus, input:focus{
   box-shadow: var(--shadow);
   overflow:hidden;
 }
-
 .sheetHeader{
   padding: 14px 14px 10px;
   display:flex;
@@ -571,14 +436,7 @@ select:focus, input:focus{
   justify-content:space-between;
   gap:12px;
 }
-
-.sheetHeader .titleWrap{
-  display:flex;
-  flex-direction:column;
-  gap:6px;
-  min-width:0;
-}
-
+.sheetHeader .titleWrap{ display:flex; flex-direction:column; gap:6px; min-width:0; }
 .sheetHeader .itemTitle{
   font-size: 16px;
   font-weight: 1000;
@@ -588,29 +446,24 @@ select:focus, input:focus{
   overflow:hidden;
   text-overflow:ellipsis;
 }
-
-.sheetHeader .itemSub{
-  font-size: 12px;
-  color: rgba(0,0,0,.65);
-  line-height: 1.2;
-}
-
+.sheetHeader .itemSub{ font-size: 12px; color: rgba(0,0,0,.65); line-height: 1.2; }
 .sheetHeader .closeBtn{
-  flex: 0 0 auto;
-  min-height: 38px;
-  min-width: 38px;
+  min-height: 38px; min-width: 38px;
   border-radius: 14px;
   border: 1px solid rgba(0,0,0,.12);
   background: rgba(255,255,255,.86);
   cursor:pointer;
 }
-
-/* Toggle inside sheet */
-.modeTabs{
-  display:flex;
-  gap:10px;
+.sheetBody{ padding: 0 14px 14px; display:flex; flex-direction:column; gap:12px; }
+.sheetFooter{
+  padding: 12px 14px 14px;
+  border-top: 1px solid rgba(0,0,0,.10);
+  display:flex; gap:10px;
 }
+.sheetFooter .btn{ flex:1; }
 
+/* Tabs */
+.modeTabs{ display:flex; gap:10px; }
 .modeTabs .tab{
   flex:1;
   min-height: 42px;
@@ -619,9 +472,7 @@ select:focus, input:focus{
   background: rgba(255,255,255,.86);
   color: rgba(0,0,0,.65);
   cursor:pointer;
-  transition: .14s ease;
 }
-
 .modeTabs .tab.active{
   color: rgba(0,0,0,.92);
   border-color: rgba(47,174,99,.32);
@@ -629,14 +480,12 @@ select:focus, input:focus{
   box-shadow: var(--glow-pickle);
 }
 
-/* Option groups + notices */
 .optionGroup{
   border-radius: var(--radius2);
   border: 1px solid rgba(0,0,0,.12);
   background: rgba(255,255,255,.88);
   padding: 12px;
 }
-
 .notice{
   border-radius: var(--radius2);
   border: 1px solid rgba(255,90,31,.22);
@@ -644,22 +493,6 @@ select:focus, input:focus{
   padding: 12px;
   color: rgba(0,0,0,.86);
 }
-
-.sheetBody{
-  padding: 0 14px 14px;
-  display:flex;
-  flex-direction:column;
-  gap:12px;
-}
-
-.sheetFooter{
-  padding: 12px 14px 14px;
-  border-top: 1px solid rgba(0,0,0,.10);
-  display:flex;
-  gap:10px;
-}
-
-.sheetFooter .btn{ flex:1; }
 
 /* Badges */
 .badge{
@@ -675,21 +508,9 @@ select:focus, input:focus{
   font-weight: 900;
   letter-spacing:.2px;
 }
-
-.badge.ember{
-  border-color: rgba(255,90,31,.28);
-  background: rgba(255,90,31,.12);
-}
-
-.badge.mustard{
-  border-color: rgba(244,183,64,.30);
-  background: rgba(244,183,64,.16);
-}
-
-.badge.pickle{
-  border-color: rgba(47,174,99,.30);
-  background: rgba(47,174,99,.14);
-}
+.badge.ember{ border-color: rgba(255,90,31,.28); background: rgba(255,90,31,.12); }
+.badge.mustard{ border-color: rgba(244,183,64,.30); background: rgba(244,183,64,.16); }
+.badge.pickle{ border-color: rgba(47,174,99,.30); background: rgba(47,174,99,.14); }
 
 /* Utilities */
 .muted{ color: rgba(0,0,0,.65); }
