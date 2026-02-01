@@ -16,12 +16,33 @@ function normalizeMenu(menu) {
 
 function getHoursLines(location) {
   const hrs = (location && location.hours) || [];
-  // supports either {days, hours} or {day, time}
   return hrs.map((h) => ({
     left: h.days || h.day || "",
     right: h.hours || h.time || "",
     key: (h.days || h.day || "") + "|" + (h.hours || h.time || ""),
   }));
+}
+
+function findItemByNameLike(sections, needle) {
+  const n = String(needle || "").toLowerCase().trim();
+  if (!n) return null;
+
+  for (const sec of sections || []) {
+    for (const item of sec.items || []) {
+      const name = String(item?.name || "").toLowerCase();
+      if (name.includes(n)) return item;
+    }
+  }
+  return null;
+}
+
+function findItemById(sections, id) {
+  for (const sec of sections || []) {
+    for (const item of sec.items || []) {
+      if (item?.id === id) return item;
+    }
+  }
+  return null;
 }
 
 export default function App() {
@@ -43,6 +64,18 @@ export default function App() {
   const menuForLoc = useMemo(() => getMenuForLocationId(locationId), [locationId]);
   const sections = useMemo(() => normalizeMenu(menuForLoc), [menuForLoc]);
 
+  // Featured “House Plates”
+  const featuredSteak =
+    findItemById(sections, "steak-sandwich") || findItemByNameLike(sections, "steak sandwich");
+  const featuredMandela = findItemByNameLike(sections, "mandela burger");
+
+  function openItem(item) {
+    if (!item) return;
+    setActiveItem(item);
+    setMode("original");
+    window.scrollTo({ top: 0, behavior: "smooth" });
+  }
+
   function addToCart(item) {
     const price = Number(item?.price || 0);
     setCartCount((c) => c + 1);
@@ -53,20 +86,252 @@ export default function App() {
 
   const headerBadge = fulfillment === "delivery" ? "Delivery" : "Pickup";
 
+  // Full-width helper style (break out of container cleanly)
+  const fullBleed = {
+    width: "100vw",
+    marginLeft: "calc(50% - 50vw)",
+    marginRight: "calc(50% - 50vw)",
+  };
+
   return (
     <div className="container">
-      {/* Header */}
-      <div className="header">
-        <div className="brand">
-          <img src="/logo.png" alt="G&G Steakout II" />
-          <div className="titles">
-            <div className="name">G&amp;G Steakout II</div>
-            <div className="tag">Mobile Ordering</div>
+      {/* FULL-WIDTH STORE-FRONT BANNER */}
+      <div
+        style={{
+          ...fullBleed,
+          borderBottom: "1px solid rgba(255,255,255,.10)",
+          background:
+            "linear-gradient(180deg, rgba(255,255,255,.07), rgba(0,0,0,.35) 55%, rgba(0,0,0,.55))",
+          boxShadow: "0 14px 34px rgba(0,0,0,.55)",
+        }}
+      >
+        <div
+          style={{
+            maxWidth: "980px",
+            margin: "0 auto",
+            padding: "18px 14px 14px",
+            textAlign: "center",
+          }}
+        >
+          <div
+            style={{
+              display: "inline-flex",
+              alignItems: "center",
+              justifyContent: "center",
+              padding: "14px 18px",
+              borderRadius: "18px",
+              border: "1px solid rgba(255,255,255,.12)",
+              background:
+                "linear-gradient(180deg, rgba(255,255,255,.09), rgba(0,0,0,.25))",
+              boxShadow:
+                "inset 0 1px 0 rgba(255,255,255,.10), 0 12px 26px rgba(0,0,0,.55)",
+            }}
+          >
+            <img
+              src="/logo.png"
+              alt="G&G Steakout II"
+              style={{
+                height: 86,
+                width: "auto",
+                objectFit: "contain",
+                display: "block",
+                filter: "drop-shadow(0 10px 14px rgba(0,0,0,.55))",
+              }}
+            />
+          </div>
+
+          <div
+            style={{
+              marginTop: 10,
+              fontWeight: 900,
+              letterSpacing: ".4px",
+              fontSize: 13,
+              color: "rgba(255,255,255,.86)",
+            }}
+          >
+            MOBILE ORDERING
+          </div>
+
+          <div
+            style={{
+              marginTop: 10,
+              display: "flex",
+              justifyContent: "center",
+              gap: 10,
+              flexWrap: "wrap",
+            }}
+          >
+            <span className="badge mustard">{headerBadge}</span>
           </div>
         </div>
 
-        <div style={{ marginLeft: "auto" }} className="pill">
-          <span className="badge mustard">{headerBadge}</span>
+        {/* subtle “weld seam / heat line” */}
+        <div
+          style={{
+            height: 2,
+            background:
+              "linear-gradient(90deg, transparent, rgba(255,90,31,.55), rgba(244,183,64,.45), rgba(255,90,31,.55), transparent)",
+          }}
+        />
+      </div>
+
+      {/* Featured “House Plates” */}
+      <div style={{ marginTop: 16 }}>
+        <div className="sectionTitle" style={{ marginTop: 14 }}>
+          <h2>G&amp;G Signature</h2>
+          <div className="sub">House plates — front and center</div>
+        </div>
+
+        <div
+          style={{
+            display: "grid",
+            gridTemplateColumns: "1fr 1fr",
+            gap: 12,
+          }}
+        >
+          {/* STEAK SANDWICH PLATE */}
+          <div
+            role="button"
+            tabIndex={0}
+            onClick={() => openItem(featuredSteak)}
+            onKeyDown={(e) => {
+              if (e.key === "Enter") openItem(featuredSteak);
+            }}
+            style={{
+              borderRadius: 18,
+              border: "1px solid rgba(255,255,255,.14)",
+              background:
+                "linear-gradient(135deg, rgba(255,255,255,.10), rgba(0,0,0,.25) 40%, rgba(0,0,0,.45))",
+              boxShadow:
+                "inset 0 1px 0 rgba(255,255,255,.10), 0 14px 28px rgba(0,0,0,.55)",
+              overflow: "hidden",
+              cursor: featuredSteak ? "pointer" : "default",
+              minHeight: 118,
+            }}
+          >
+            <div style={{ padding: "14px 14px 12px" }}>
+              <div
+                style={{
+                  display: "flex",
+                  alignItems: "center",
+                  justifyContent: "space-between",
+                  gap: 10,
+                }}
+              >
+                <span className="badge ember">HOUSE PLATE</span>
+                <span style={{ fontWeight: 950, color: "rgba(244,183,64,.95)" }}>
+                  {featuredSteak ? money(featuredSteak.price) : ""}
+                </span>
+              </div>
+
+              <div
+                style={{
+                  marginTop: 10,
+                  fontWeight: 950,
+                  letterSpacing: ".3px",
+                  fontSize: 16,
+                  lineHeight: 1.1,
+                  color: "rgba(255,255,255,.95)",
+                  textTransform: "uppercase",
+                }}
+              >
+                Steak Sandwiches
+              </div>
+
+              <div style={{ marginTop: 8, color: "rgba(255,255,255,.78)", fontSize: 12 }}>
+                {featuredSteak
+                  ? featuredSteak.description || featuredSteak.desc || "Tap to order"
+                  : "Not found in menu yet"}
+              </div>
+            </div>
+
+            <div
+              style={{
+                height: 2,
+                background:
+                  "linear-gradient(90deg, transparent, rgba(255,255,255,.18), transparent)",
+              }}
+            />
+            <div
+              style={{
+                height: 8,
+                background:
+                  "linear-gradient(90deg, rgba(255,90,31,.22), rgba(0,0,0,0), rgba(244,183,64,.18))",
+              }}
+            />
+          </div>
+
+          {/* MANDELA BURGER PLATE */}
+          <div
+            role="button"
+            tabIndex={0}
+            onClick={() => openItem(featuredMandela)}
+            onKeyDown={(e) => {
+              if (e.key === "Enter") openItem(featuredMandela);
+            }}
+            style={{
+              borderRadius: 18,
+              border: "1px solid rgba(255,255,255,.14)",
+              background:
+                "linear-gradient(135deg, rgba(255,255,255,.10), rgba(0,0,0,.25) 40%, rgba(0,0,0,.45))",
+              boxShadow:
+                "inset 0 1px 0 rgba(255,255,255,.10), 0 14px 28px rgba(0,0,0,.55)",
+              overflow: "hidden",
+              cursor: featuredMandela ? "pointer" : "default",
+              minHeight: 118,
+            }}
+          >
+            <div style={{ padding: "14px 14px 12px" }}>
+              <div
+                style={{
+                  display: "flex",
+                  alignItems: "center",
+                  justifyContent: "space-between",
+                  gap: 10,
+                }}
+              >
+                <span className="badge mustard">SIGNATURE</span>
+                <span style={{ fontWeight: 950, color: "rgba(244,183,64,.95)" }}>
+                  {featuredMandela ? money(featuredMandela.price) : ""}
+                </span>
+              </div>
+
+              <div
+                style={{
+                  marginTop: 10,
+                  fontWeight: 950,
+                  letterSpacing: ".3px",
+                  fontSize: 16,
+                  lineHeight: 1.1,
+                  color: "rgba(255,255,255,.95)",
+                  textTransform: "uppercase",
+                }}
+              >
+                Mandela Burger
+              </div>
+
+              <div style={{ marginTop: 8, color: "rgba(255,255,255,.78)", fontSize: 12 }}>
+                {featuredMandela
+                  ? featuredMandela.description || featuredMandela.desc || "Tap to order"
+                  : "Not found in menu yet"}
+              </div>
+            </div>
+
+            <div
+              style={{
+                height: 2,
+                background:
+                  "linear-gradient(90deg, transparent, rgba(255,255,255,.18), transparent)",
+              }}
+            />
+            <div
+              style={{
+                height: 8,
+                background:
+                  "linear-gradient(90deg, rgba(244,183,64,.20), rgba(0,0,0,0), rgba(73,194,116,.14))",
+              }}
+            />
+          </div>
         </div>
       </div>
 
