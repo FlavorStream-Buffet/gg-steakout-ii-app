@@ -6,8 +6,15 @@ function money(n) {
   return `$${v.toFixed(2)}`;
 }
 
+function fulfillmentLabel(v) {
+  if (v === "delivery") return "Delivery";
+  if (v === "pickup") return "Pickup";
+  if (v === "curbside") return "Curbside";
+  return "Delivery";
+}
+
 export default function App() {
-  const [fulfillment, setFulfillment] = useState("delivery"); // delivery | pickup
+  const [fulfillment, setFulfillment] = useState("delivery"); // delivery | pickup | curbside
   const [locationId, setLocationId] = useState(LOCATIONS?.[0]?.id || "loc-1");
 
   const [activeItem, setActiveItem] = useState(null);
@@ -33,7 +40,7 @@ export default function App() {
 
   return (
     <div className="container">
-      {/* Header (NO in-page logo image — logo is background only) */}
+      {/* Header (logo is background only) */}
       <div className="header">
         <div className="brand">
           <div className="brandName">G&amp;G Steakout II</div>
@@ -41,11 +48,11 @@ export default function App() {
         </div>
 
         <div className="headerRight">
-          <span className="headerMode">{fulfillment === "delivery" ? "Delivery" : "Pickup"}</span>
+          <span className="headerMode">{fulfillmentLabel(fulfillment)}</span>
         </div>
       </div>
 
-      {/* Fulfillment toggle (restored & visible) */}
+      {/* Fulfillment toggle (Delivery / Pickup / Curbside) */}
       <div className="toggleRow">
         <button
           className={`toggle ${fulfillment === "delivery" ? "active" : ""}`}
@@ -53,11 +60,19 @@ export default function App() {
         >
           Delivery
         </button>
+
         <button
           className={`toggle ${fulfillment === "pickup" ? "active" : ""}`}
           onClick={() => setFulfillment("pickup")}
         >
           Pickup
+        </button>
+
+        <button
+          className={`toggle ${fulfillment === "curbside" ? "active" : ""}`}
+          onClick={() => setFulfillment("curbside")}
+        >
+          Curbside
         </button>
       </div>
 
@@ -132,7 +147,7 @@ export default function App() {
           <button className="cartPill" onClick={() => alert("Checkout coming soon.")}>
             <div className="left">
               <div className="label">
-                Cart ({cartCount}) — {fulfillment === "delivery" ? "Delivery" : "Pickup"}
+                Cart ({cartCount}) — {fulfillmentLabel(fulfillment)}
               </div>
               <div className="sub">Checkout placeholder</div>
             </div>
