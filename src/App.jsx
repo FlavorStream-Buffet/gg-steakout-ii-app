@@ -13,6 +13,22 @@ function fulfillmentLabel(v) {
   return "Delivery";
 }
 
+/** Sort items highest → lowest price (missing/0 price goes to the bottom) */
+function sortHighToLow(items) {
+  return [...(items || [])].sort((a, b) => {
+    const ap = Number(a?.price ?? -1);
+    const bp = Number(b?.price ?? -1);
+
+    // Items with price 0 or missing go to the bottom
+    const aMissing = !(ap > 0);
+    const bMissing = !(bp > 0);
+    if (aMissing && !bMissing) return 1;
+    if (!aMissing && bMissing) return -1;
+
+    return bp - ap;
+  });
+}
+
 export default function App() {
   const [fulfillment, setFulfillment] = useState("delivery"); // delivery | pickup | curbside
   const [locationId, setLocationId] = useState(LOCATIONS?.[0]?.id || "loc-1");
@@ -28,7 +44,15 @@ export default function App() {
   }, [locationId]);
 
   const menu = useMemo(() => getMenuForLocationId(locationId), [locationId]);
-  const sections = useMemo(() => menu?.sections || [], [menu]);
+
+  // ✅ Sections with items auto-sorted high→low
+  const sections = useMemo(() => {
+    const base = menu?.sections || [];
+    return base.map((s) => ({
+      ...s,
+      items: sortHighToLow(s.items),
+    }));
+  }, [menu]);
 
   function addToCart(item) {
     const price = Number(item?.price || 0);
@@ -40,7 +64,6 @@ export default function App() {
 
   return (
     <div className="container">
-      {/* Header (logo is background only) */}
       <div className="header">
         <div className="brand">
           <div className="brandName">G&amp;G Steakout II</div>
@@ -52,7 +75,6 @@ export default function App() {
         </div>
       </div>
 
-      {/* Fulfillment toggle (Delivery / Pickup / Curbside) */}
       <div className="toggleRow">
         <button
           className={`toggle ${fulfillment === "delivery" ? "active" : ""}`}
@@ -76,7 +98,6 @@ export default function App() {
         </button>
       </div>
 
-      {/* Location + Hours */}
       <div className="locationBlock">
         <div className="locationLabel">Location</div>
 
@@ -109,7 +130,6 @@ export default function App() {
         ) : null}
       </div>
 
-      {/* Menu Sections */}
       {sections.map((section) => (
         <div key={section.id || section.title}>
           <div className="sectionTitle">
@@ -141,7 +161,6 @@ export default function App() {
         </div>
       ))}
 
-      {/* Bottom Cart */}
       <div className="bottomBar">
         <div className="inner">
           <button className="cartPill" onClick={() => alert("Checkout coming soon.")}>
@@ -156,7 +175,6 @@ export default function App() {
         </div>
       </div>
 
-      {/* Slide-up Item Sheet */}
       {activeItem && (
         <div className="sheetOverlay" onClick={() => setActiveItem(null)}>
           <div className="sheet" onClick={(e) => e.stopPropagation()}>
