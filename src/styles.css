@@ -1,4 +1,6 @@
-/* src/styles.css — add subtle 3D “floating” category cards (not overkill) */
+/* src/styles.css — Page stays warm + logo background.
+   Upgrade: Item ordering window (sheet) becomes classy dark / premium.
+*/
 
 :root{
   --paper:#f6f2ea;
@@ -9,12 +11,24 @@
   --tap:44px;
   --max:980px;
 
-  /* NEW: depth tokens */
+  /* Depth */
   --shadow1: 0 10px 22px rgba(0,0,0,.10);
   --shadow2: 0 16px 34px rgba(0,0,0,.14);
   --shadow3: 0 22px 48px rgba(0,0,0,.18);
   --edge: rgba(0,0,0,.14);
   --edge2: rgba(0,0,0,.20);
+
+  /* Sheet (ordering window) palette */
+  --sheet0: rgba(14,14,16,.92);
+  --sheet1: rgba(26,26,30,.92);
+  --sheetText: rgba(255,255,255,.94);
+  --sheetMuted: rgba(255,255,255,.72);
+  --sheetMuted2: rgba(255,255,255,.58);
+  --sheetBorder: rgba(255,255,255,.14);
+  --sheetBorder2: rgba(255,255,255,.22);
+  --sheetGlow: 0 0 0 1px rgba(255,255,255,.10), 0 24px 70px rgba(0,0,0,.55);
+  --sheetEmber: rgba(178,34,34,.95);
+  --sheetEmberSoft: rgba(178,34,34,.22);
 }
 
 *{ box-sizing:border-box; }
@@ -27,7 +41,7 @@ body{
   background: var(--paper);
 }
 
-/* Background logo — fixed, SMALLER */
+/* Background logo — fixed */
 body::before{
   content:"";
   position: fixed;
@@ -45,7 +59,7 @@ body::before{
   filter: saturate(1.05) contrast(1.05);
 }
 
-/* Paper wash for readability */
+/* Paper wash */
 body::after{
   content:"";
   position: fixed;
@@ -161,12 +175,9 @@ select{
   overflow-x:auto;
   padding: 10px 4px 18px;
   -webkit-overflow-scrolling: touch;
-
-  /* NEW: makes the row feel “deep” */
   perspective: 900px;
 }
 
-/* NEW: subtle “floating past” feel */
 .rowScroller::-webkit-scrollbar{ height: 10px; }
 .rowScroller::-webkit-scrollbar-thumb{
   background: rgba(0,0,0,.12);
@@ -174,34 +185,23 @@ select{
 }
 .rowScroller::-webkit-scrollbar-track{ background: transparent; }
 
-/* Category cards — NEW 3D + shadow */
+/* Cards — subtle 3D */
 .card{
   min-width:190px;
   max-width:240px;
   padding:12px;
   cursor:pointer;
 
-  /* still glassy but less flat */
-  background:
-    linear-gradient(180deg, rgba(255,255,255,.58), rgba(255,255,255,.36));
+  background: linear-gradient(180deg, rgba(255,255,255,.58), rgba(255,255,255,.36));
   border: 1px solid var(--edge);
   border-radius: 16px;
 
-  /* the depth */
   box-shadow: var(--shadow2);
-
-  /* NEW: floating effect baseline */
   transform: translateZ(0);
-  transition:
-    transform .18s ease,
-    box-shadow .18s ease,
-    border-color .18s ease,
-    background .18s ease;
-
+  transition: transform .18s ease, box-shadow .18s ease, border-color .18s ease, background .18s ease;
   backdrop-filter: blur(6px);
 }
 
-/* “Raised” on hover (desktop) */
 @media (hover:hover){
   .card:hover{
     transform: translateY(-4px) rotateX(1deg);
@@ -209,8 +209,6 @@ select{
     border-color: var(--edge2);
   }
 }
-
-/* “Pressed” on tap (mobile) */
 .card:active{
   transform: translateY(-2px) scale(.99);
   box-shadow: var(--shadow1);
@@ -234,7 +232,7 @@ select{
 }
 .accent{ font-weight:1000; color:var(--ember); }
 
-/* Checkout placeholder — transparent (keep) */
+/* Checkout placeholder — transparent */
 .bottomBar{
   position: fixed;
   left:0;
@@ -246,12 +244,10 @@ select{
   backdrop-filter:none;
   z-index:5;
 }
-
 .bottomBar .inner{
   max-width:var(--max);
   margin:0 auto;
 }
-
 .cartPill{
   width:100%;
   background:none;
@@ -262,18 +258,235 @@ select{
   color:#000;
 }
 
-/* Sheet */
+/* =========================
+   ORDERING WINDOW (SHEET)
+   ========================= */
+
+/* Dark overlay with subtle “spotlight” so it feels premium */
 .sheetOverlay{
-  position:fixed;
-  inset:0;
-  background:rgba(0,0,0,.45);
+  position: fixed;
+  inset: 0;
+  background:
+    radial-gradient(900px 540px at 50% 85%, rgba(178,34,34,.14), rgba(0,0,0,0) 60%),
+    rgba(0,0,0,.55);
   display:flex;
   align-items:flex-end;
-  z-index:10;
+  justify-content:center;
+  padding: 10px 10px calc(10px + env(safe-area-inset-bottom));
+  z-index: 20;
 }
+
+/* The panel itself: dark steel + clean edges */
 .sheet{
-  background:#fff;
-  width:100%;
-  border-radius:16px;
-  padding:14px;
+  width: min(var(--max), 100%);
+  border-radius: 18px 18px 16px 16px;
+  color: var(--sheetText);
+
+  background:
+    linear-gradient(180deg, var(--sheet1), var(--sheet0));
+  border: 1px solid var(--sheetBorder);
+  box-shadow: var(--sheetGlow);
+  overflow: hidden;
+
+  transform: translateY(0);
+}
+
+/* Header row */
+.sheetHeader{
+  padding: 14px 14px 10px;
+  display:flex;
+  align-items:flex-start;
+  justify-content:space-between;
+  gap:12px;
+
+  background: linear-gradient(180deg, rgba(255,255,255,.06), rgba(255,255,255,.02));
+  border-bottom: 1px solid rgba(255,255,255,.10);
+}
+
+.titleWrap{ display:flex; flex-direction:column; gap:6px; min-width:0; }
+
+.itemTitle{
+  font-size: 17px;
+  font-weight: 1000;
+  letter-spacing:.2px;
+  line-height: 1.12;
+  white-space:nowrap;
+  overflow:hidden;
+  text-overflow:ellipsis;
+}
+
+.itemSub{
+  font-size: 12.5px;
+  font-weight: 750;
+  color: var(--sheetMuted);
+  line-height: 1.25;
+}
+
+/* Close button: looks like a real control, not a random X */
+.closeBtn{
+  border: 1px solid rgba(255,255,255,.16);
+  background: rgba(255,255,255,.06);
+  color: rgba(255,255,255,.92);
+  min-width: 40px;
+  min-height: 40px;
+  border-radius: 12px;
+  cursor:pointer;
+  transition: .15s ease;
+}
+.closeBtn:hover{
+  border-color: rgba(255,255,255,.26);
+  background: rgba(255,255,255,.10);
+}
+.closeBtn:active{ transform: translateY(1px); }
+
+/* Body */
+.sheetBody{
+  padding: 12px 14px 12px;
+  display:flex;
+  flex-direction:column;
+  gap:12px;
+}
+
+/* Tabs */
+.modeTabs{
+  display:flex;
+  gap:10px;
+}
+
+.tab{
+  flex:1;
+  min-height: 44px;
+  border-radius: 14px;
+  border: 1px solid rgba(255,255,255,.14);
+  background: rgba(255,255,255,.06);
+  color: rgba(255,255,255,.78);
+  font-weight: 1000;
+  cursor:pointer;
+  transition: .15s ease;
+}
+
+.tab:hover{
+  border-color: rgba(255,255,255,.22);
+  background: rgba(255,255,255,.08);
+}
+
+.tab.active{
+  color: rgba(255,255,255,.96);
+  border-color: rgba(178,34,34,.40);
+  background:
+    linear-gradient(180deg, rgba(178,34,34,.26), rgba(255,255,255,.06));
+  box-shadow: 0 0 0 1px rgba(178,34,34,.16);
+}
+
+/* Notice inside sheet */
+.notice{
+  border-radius: 14px;
+  border: 1px solid rgba(255,255,255,.14);
+  background:
+    linear-gradient(180deg, rgba(255,255,255,.06), rgba(0,0,0,.10));
+  padding: 12px;
+  color: rgba(255,255,255,.84);
+  font-weight: 800;
+  line-height: 1.25;
+}
+.notice b{ color: rgba(255,255,255,.96); }
+
+/* Option group (when customize is used) */
+.optionGroup{
+  border-radius: 16px;
+  border: 1px solid rgba(255,255,255,.14);
+  background: rgba(255,255,255,.05);
+  padding: 12px;
+}
+
+.groupTitle{
+  display:flex;
+  align-items:center;
+  justify-content:space-between;
+  gap:10px;
+  font-weight: 1000;
+  letter-spacing:.2px;
+  margin-bottom: 10px;
+  color: rgba(255,255,255,.92);
+}
+
+.hint{
+  font-size: 12px;
+  font-weight: 850;
+  color: rgba(255,255,255,.62);
+}
+
+.optionRow{ display:flex; flex-direction:column; gap:8px; }
+
+.choice{
+  display:flex;
+  align-items:center;
+  justify-content:space-between;
+  gap:10px;
+  padding: 10px 10px;
+  border-radius: 14px;
+  border: 1px solid rgba(255,255,255,.10);
+  background: rgba(0,0,0,.18);
+}
+
+.choice .name{
+  font-weight: 950;
+  font-size: 13px;
+  color: rgba(255,255,255,.90);
+}
+
+.choice .right{
+  display:flex;
+  align-items:center;
+  gap:10px;
+  color: rgba(255,255,255,.70);
+  font-size: 12px;
+  font-weight: 850;
+}
+
+.choice input[type="checkbox"],
+.choice input[type="radio"]{
+  width: 18px;
+  height: 18px;
+  accent-color: var(--sheetEmber);
+}
+
+/* Footer actions */
+.sheetFooter{
+  padding: 12px 14px 14px;
+  border-top: 1px solid rgba(255,255,255,.10);
+  background: linear-gradient(180deg, rgba(0,0,0,.10), rgba(0,0,0,.22));
+  display:flex;
+  gap:10px;
+}
+
+.btn{
+  flex:1;
+  min-height: 46px;
+  border-radius: 14px;
+  border: 1px solid rgba(255,255,255,.14);
+  background: rgba(255,255,255,.06);
+  color: rgba(255,255,255,.90);
+  font-weight: 1000;
+  cursor:pointer;
+  transition: .15s ease;
+}
+.btn:hover{
+  border-color: rgba(255,255,255,.22);
+  background: rgba(255,255,255,.08);
+}
+.btn:active{ transform: translateY(1px); }
+
+.btn.primary{
+  border-color: rgba(178,34,34,.42);
+  background: linear-gradient(180deg, rgba(178,34,34,.34), rgba(178,34,34,.18));
+  box-shadow: 0 0 0 1px rgba(178,34,34,.18);
+}
+.btn.primary:hover{
+  border-color: rgba(178,34,34,.58);
+  background: linear-gradient(180deg, rgba(178,34,34,.40), rgba(178,34,34,.20));
+}
+
+.btn.ghost{
+  background: rgba(255,255,255,.04);
 }
