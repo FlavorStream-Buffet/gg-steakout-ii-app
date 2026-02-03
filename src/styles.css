@@ -1,8 +1,4 @@
-/* src/styles.css — FINAL FIX
-   - Logo background (smaller, fixed)
-   - CLEAR controls
-   - Checkout placeholder NOT black
-*/
+/* src/styles.css — add subtle 3D “floating” category cards (not overkill) */
 
 :root{
   --paper:#f6f2ea;
@@ -12,6 +8,13 @@
   --ember:#b22222;
   --tap:44px;
   --max:980px;
+
+  /* NEW: depth tokens */
+  --shadow1: 0 10px 22px rgba(0,0,0,.10);
+  --shadow2: 0 16px 34px rgba(0,0,0,.14);
+  --shadow3: 0 22px 48px rgba(0,0,0,.18);
+  --edge: rgba(0,0,0,.14);
+  --edge2: rgba(0,0,0,.20);
 }
 
 *{ box-sizing:border-box; }
@@ -151,23 +154,69 @@ select{
 .sectionTitle h2{ margin:0; font-size:20px; font-weight:1000; }
 .sectionTitle .sub{ font-size:13px; font-weight:800; color:var(--muted2); }
 
-/* Menu */
+/* Menu row */
 .rowScroller{
   display:flex;
   gap:14px;
   overflow-x:auto;
-  padding:8px 2px 12px;
+  padding: 10px 4px 18px;
+  -webkit-overflow-scrolling: touch;
+
+  /* NEW: makes the row feel “deep” */
+  perspective: 900px;
 }
+
+/* NEW: subtle “floating past” feel */
+.rowScroller::-webkit-scrollbar{ height: 10px; }
+.rowScroller::-webkit-scrollbar-thumb{
+  background: rgba(0,0,0,.12);
+  border-radius: 999px;
+}
+.rowScroller::-webkit-scrollbar-track{ background: transparent; }
+
+/* Category cards — NEW 3D + shadow */
 .card{
   min-width:190px;
   max-width:240px;
   padding:12px;
-  background:rgba(255,255,255,.46);
-  border:1px solid rgba(0,0,0,.14);
-  border-radius:14px;
-  backdrop-filter: blur(6px);
   cursor:pointer;
+
+  /* still glassy but less flat */
+  background:
+    linear-gradient(180deg, rgba(255,255,255,.58), rgba(255,255,255,.36));
+  border: 1px solid var(--edge);
+  border-radius: 16px;
+
+  /* the depth */
+  box-shadow: var(--shadow2);
+
+  /* NEW: floating effect baseline */
+  transform: translateZ(0);
+  transition:
+    transform .18s ease,
+    box-shadow .18s ease,
+    border-color .18s ease,
+    background .18s ease;
+
+  backdrop-filter: blur(6px);
 }
+
+/* “Raised” on hover (desktop) */
+@media (hover:hover){
+  .card:hover{
+    transform: translateY(-4px) rotateX(1deg);
+    box-shadow: var(--shadow3);
+    border-color: var(--edge2);
+  }
+}
+
+/* “Pressed” on tap (mobile) */
+.card:active{
+  transform: translateY(-2px) scale(.99);
+  box-shadow: var(--shadow1);
+}
+
+.cardInner{ display:flex; flex-direction:column; gap:8px; }
 .kicker{ font-size:12px; font-weight:900; color:var(--muted2); }
 .title{ font-size:16px; font-weight:1000; }
 .meta{
@@ -175,9 +224,17 @@ select{
   justify-content:space-between;
   font-size:12px;
   font-weight:800;
+  color:var(--muted);
 }
+.desc{
+  max-width:150px;
+  overflow:hidden;
+  text-overflow:ellipsis;
+  white-space:nowrap;
+}
+.accent{ font-weight:1000; color:var(--ember); }
 
-/* ✅ CHECKOUT PLACEHOLDER — TRANSPARENT */
+/* Checkout placeholder — transparent (keep) */
 .bottomBar{
   position: fixed;
   left:0;
