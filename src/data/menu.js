@@ -1,7 +1,7 @@
 // src/data/menu.js
 // G&G Steakout II — Menu Data
 // Phase 1: Structure + flagship item spec
-// Now fully built: Mandela Burger options (required + optional + upcharges)
+// Mandela Burger options fully built (required + optional + upcharges)
 
 export const LOCATIONS = [
   {
@@ -26,11 +26,6 @@ function placeholderItem(id, name, price = 0, description = "Menu details coming
 
 /**
  * Mandela Burger (signature item) — FULL options spec
- * Notes:
- * - We keep the options realistic and restaurant-friendly.
- * - Required choices: Cook Temp, Cheese, Bun.
- * - Optional: Toppings, Sauces, Premium Adds.
- * - We keep “No ___” out of multi-select lists to avoid contradictions.
  */
 function mandelaBurgerItem() {
   return {
@@ -109,9 +104,13 @@ function mandelaBurgerItem() {
           { id: "sauce-mustard", label: "Mustard" },
           { id: "sauce-bbq", label: "BBQ" },
           { id: "sauce-hot", label: "Hot Sauce" },
-          { id: "sauce-gg", label: "G&G Sauce", priceDelta: 0.50 },
-          { id: "sauce-ranch", label: "Ranch", priceDelta: 0.50 },
-          { id: "sauce-blue-cheese", label: "Blue Cheese", priceDelta: 0.50 },
+
+          // ✅ G&G signature sauces (your request)
+          { id: "sauce-gg-mild", label: "G&G Sauce (Mild)", priceDelta: 0.5 },
+          { id: "sauce-gg-hot", label: "G&G Sauce (Hot)", priceDelta: 0.5 },
+
+          { id: "sauce-ranch", label: "Ranch", priceDelta: 0.5 },
+          { id: "sauce-blue-cheese", label: "Blue Cheese", priceDelta: 0.5 },
         ],
       },
 
@@ -226,10 +225,8 @@ function menuLoc1() {
         title: "Top Picks",
         note: "Fast favorites — tap to order",
         items: [
-          // 🔥 Flagship first: Mandela Burger (signature)
+          // 🔥 Flagship first
           mandelaBurgerItem(),
-
-          // Next most popular / core
           steakSandwichItem(),
           wingsItem(),
         ],
@@ -351,6 +348,5 @@ function menuLoc1() {
 
 export function getMenuForLocationId(locationId) {
   if (locationId === "loc-1") return menuLoc1();
-  // loc-2: for now mirror loc-1; later you can swap to a different menu.
   return menuLoc1();
 }
