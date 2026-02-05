@@ -4,11 +4,11 @@ import App from "./App.jsx";
 import "./styles.css";
 
 /**
- * G&G Splash Screen
- * - Normal logo (no wash, no box)
- * - Soft fade-IN
+ * G&G Splash Screen (Refined)
+ * - Pure opacity fade-in (NO movement)
+ * - Gentle, understated
  * - Holds ~3.8s
- * - Slow, premium fade-OUT
+ * - Smooth opacity fade-out
  */
 function mountSplash() {
   const style = document.createElement("style");
@@ -23,36 +23,27 @@ function mountSplash() {
       background: rgba(245, 239, 229, 0.92);
       backdrop-filter: blur(8px);
       opacity: 0;
-      animation: ggSplashFadeIn 0.9s ease forwards;
+      animation: ggSplashFadeIn 1.2s ease-out forwards;
     }
 
     #gg-splash img {
       width: min(80vw, 460px);
       height: auto;
       display: block;
-      filter: none;
     }
 
     #gg-splash.fade-out {
-      animation: ggSplashFadeOut 1.2s ease forwards;
+      animation: ggSplashFadeOut 1.2s ease-in forwards;
     }
 
     @keyframes ggSplashFadeIn {
-      from {
-        opacity: 0;
-        transform: translateY(6px);
-      }
-      to {
-        opacity: 1;
-        transform: translateY(0);
-      }
+      from { opacity: 0; }
+      to { opacity: 1; }
     }
 
     @keyframes ggSplashFadeOut {
-      to {
-        opacity: 0;
-        transform: translateY(-10px);
-      }
+      from { opacity: 1; }
+      to { opacity: 0; }
     }
   `;
   document.head.appendChild(style);
@@ -62,7 +53,7 @@ function mountSplash() {
   splash.innerHTML = `<img src="/logo.png" alt="G&G Steakout II" />`;
   document.body.appendChild(splash);
 
-  const SHOW_MS = 3800; // logo fully visible time
+  const SHOW_MS = 3800;
   const FADE_OUT_MS = 1200;
 
   setTimeout(() => {
