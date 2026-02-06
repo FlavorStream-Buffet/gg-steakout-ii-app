@@ -1,4 +1,4 @@
-import { useMemo, useState } from "react";
+import { useEffect, useMemo, useState } from "react";
 import { LOCATIONS, getMenuForLocationId } from "./data/menu.js";
 
 function money(n) {
@@ -6,27 +6,46 @@ function money(n) {
   return `$${v.toFixed(2)}`;
 }
 
-function fulfillmentLabel(v) {
-  if (v === "delivery") return "Delivery";
-  if (v === "pickup") return "Pickup";
-  if (v === "curbside") return "Curbside";
-  return "Delivery";
+function getDefaultSelections(item) {
+  const groups = Array.isArray(item?.optionGroups) ? item.optionGroups : [];
+  const sel = {};
+
+  for (const g of groups) {
+    if (g.type === "single") {
+      const opts = Array.isArray(g.options) ? g.options : [];
+      const def = opts.find((o) => o.default) || (g.required ? opts[0] : null);
+      sel[g.id] = def ? def.id : "";
+    } else if (g.type === "multi") {
+      sel[g.id] = [];
+    }
+  }
+
+  return sel;
 }
 
-/** Sort items highest → lowest price (missing/0 price goes to the bottom) */
-function sortHighToLow(items) {
-  return [...(items || [])].sort((a, b) => {
-    const ap = Number(a?.price ?? -1);
-    const bp = Number(b?.price ?? -1);
+function calcPrice(item, selections) {
+  const base = Number(item?.price || 0);
+  const groups = Array.isArray(item?.optionGroups) ? item.optionGroups : [];
 
-    // Items with price 0 or missing go to the bottom
-    const aMissing = !(ap > 0);
-    const bMissing = !(bp > 0);
-    if (aMissing && !bMissing) return 1;
-    if (!aMissing && bMissing) return -1;
+  let delta = 0;
 
-    return bp - ap;
-  });
+  for (const g of groups) {
+    const opts = Array.isArray(g.options) ? g.options : [];
+    const chosen = selections?.[g.id];
+
+    if (g.type === "single") {
+      const picked = opts.find((o) => o.id === chosen);
+      delta += Number(picked?.priceDelta || 0);
+    } else if (g.type === "multi") {
+      const ids = Array.isArray(chosen) ? chosen : [];
+      for (const id of ids) {
+        const picked = opts.find((o) => o.id === id);
+        delta += Number(picked?.priceDelta || 0);
+      }
+    }
+  }
+
+  return base + delta;
 }
 
 export default function App() {
@@ -36,45 +55,83 @@ export default function App() {
   const [activeItem, setActiveItem] = useState(null);
   const [mode, setMode] = useState("original"); // original | customize
 
+  const [selections, setSelections] = useState({});
   const [cartCount, setCartCount] = useState(0);
   const [cartTotal, setCartTotal] = useState(0);
 
-  const location = useMemo(() => {
-    return (LOCATIONS || []).find((l) => l.id === locationId) || (LOCATIONS || [])[0];
-  }, [locationId]);
+  const location = useMemo(
+    () => LOCATIONS.find((l) => l.id === locationId) || LOCATIONS[0],
+    [locationId]
+  );
 
   const menu = useMemo(() => getMenuForLocationId(locationId), [locationId]);
 
-  // ✅ Sections with items auto-sorted high→low
+  // Pricing order strategy: highest -> lowest price inside each section
   const sections = useMemo(() => {
-    const base = menu?.sections || [];
-    return base.map((s) => ({
-      ...s,
-      items: sortHighToLow(s.items),
-    }));
+    const secs = Array.isArray(menu?.sections) ? menu.sections : [];
+    return secs.map((s) => {
+      const items = Array.isArray(s.items) ? s.items.slice() : [];
+      items.sort((a, b) => Number(b?.price || 0) - Number(a?.price || 0));
+      return { ...s, items };
+    });
   }, [menu]);
 
+  const computedPrice = useMemo(() => {
+    if (!activeItem) return 0;
+    return calcPrice(activeItem, selections);
+  }, [activeItem, selections]);
+
+  useEffect(() => {
+    if (!activeItem) return;
+    setSelections(getDefaultSelections(activeItem));
+    setMode("original");
+  }, [activeItem]);
+
   function addToCart(item) {
-    const price = Number(item?.price || 0);
+    const price = Number(calcPrice(item, selections) || 0);
     setCartCount((c) => c + 1);
     setCartTotal((t) => t + price);
     setActiveItem(null);
     setMode("original");
   }
 
+  function toggleMulti(groupId, optionId) {
+    setSelections((prev) => {
+      const current = Array.isArray(prev[groupId]) ? prev[groupId] : [];
+      const exists = current.includes(optionId);
+      const next = exists ? current.filter((x) => x !== optionId) : [...current, optionId];
+      return { ...prev, [groupId]: next };
+    });
+  }
+
+  function setSingle(groupId, optionId) {
+    setSelections((prev) => ({ ...prev, [groupId]: optionId }));
+  }
+
   return (
     <div className="container">
+      {/* Header */}
       <div className="header">
         <div className="brand">
-          <div className="brandName">G&amp;G Steakout II</div>
-          <div className="brandTag">Mobile Ordering</div>
+          <img src="/logo.png" alt="G&G Steakout II" />
+          <div className="titles">
+            <div className="name">G&amp;G Steakout II</div>
+            <div className="tag">Mobile Ordering</div>
+          </div>
         </div>
 
-        <div className="headerRight">
-          <span className="headerMode">{fulfillmentLabel(fulfillment)}</span>
+        <div style={{ marginLeft: "auto" }} className="pill">
+          <span className="badge mustard">
+            {fulfillment === "delivery"
+              ? "Delivery"
+              : fulfillment === "pickup"
+              ? "Pickup"
+              : "Curbside"}
+          </span>
         </div>
       </div>
 
+      {/* Fulfillment toggle */}
       <div className="toggleRow">
         <button
           className={`toggle ${fulfillment === "delivery" ? "active" : ""}`}
@@ -82,14 +139,12 @@ export default function App() {
         >
           Delivery
         </button>
-
         <button
           className={`toggle ${fulfillment === "pickup" ? "active" : ""}`}
           onClick={() => setFulfillment("pickup")}
         >
           Pickup
         </button>
-
         <button
           className={`toggle ${fulfillment === "curbside" ? "active" : ""}`}
           onClick={() => setFulfillment("curbside")}
@@ -98,42 +153,43 @@ export default function App() {
         </button>
       </div>
 
+      {/* Location + Hours */}
       <div className="locationBlock">
-        <div className="locationLabel">Location</div>
+        <div className="locationInner">
+          <div className="locationLabel">Location</div>
 
-        <div className="locationRow">
-          <select value={locationId} onChange={(e) => setLocationId(e.target.value)}>
-            {(LOCATIONS || []).map((l) => (
-              <option key={l.id} value={l.id}>
-                {l.name}
-              </option>
-            ))}
-          </select>
-        </div>
+          <div className="locationRow">
+            <select value={locationId} onChange={(e) => setLocationId(e.target.value)}>
+              {LOCATIONS.map((l) => (
+                <option key={l.id} value={l.id}>
+                  {l.name}
+                </option>
+              ))}
+            </select>
+          </div>
 
-        {location?.hours?.length ? (
           <div className="storeHours">
             <div className="hoursTitle">
               <span>Store Hours</span>
-              <span className="hoursBadge">Downtown</span>
+              <span className="badge ember">Downtown</span>
             </div>
-
             <div className="hoursLines">
-              {location.hours.map((h) => (
-                <div className="line" key={h.days || h.day}>
-                  <span className="day">{h.days || h.day}</span>
-                  <span className="time">{h.hours || h.time}</span>
+              {(location?.hours || []).map((h) => (
+                <div className="line" key={h.days}>
+                  <span className="day">{h.days}</span>
+                  <span className="time">{h.hours}</span>
                 </div>
               ))}
             </div>
           </div>
-        ) : null}
+        </div>
       </div>
 
+      {/* Menu Sections */}
       {sections.map((section) => (
         <div key={section.id || section.title}>
           <div className="sectionTitle">
-            <h2>{section.title}</h2>
+            <h2>{section.title || "Menu"}</h2>
             <div className="sub">{section.note || "Tap an item to customize"}</div>
           </div>
 
@@ -142,16 +198,15 @@ export default function App() {
               <div
                 key={item.id || item.name}
                 className="card"
-                onClick={() => {
-                  setActiveItem(item);
-                  setMode("original");
-                }}
+                onClick={() => setActiveItem(item)}
               >
                 <div className="cardInner">
-                  <div className="kicker">{section.title}</div>
+                  <div className="kicker">{section.title || "Category"}</div>
                   <div className="title">{item.name}</div>
                   <div className="meta">
-                    <span className="desc">{item.description || item.desc || ""}</span>
+                    <span className="muted">
+                      {item.description || item.desc || ""}
+                    </span>
                     <span className="accent">{money(item.price)}</span>
                   </div>
                 </div>
@@ -161,12 +216,18 @@ export default function App() {
         </div>
       ))}
 
+      {/* Bottom Cart */}
       <div className="bottomBar">
         <div className="inner">
           <button className="cartPill" onClick={() => alert("Checkout coming soon.")}>
             <div className="left">
               <div className="label">
-                Cart ({cartCount}) — {fulfillmentLabel(fulfillment)}
+                Cart ({cartCount}) —{" "}
+                {fulfillment === "delivery"
+                  ? "Delivery"
+                  : fulfillment === "pickup"
+                  ? "Pickup"
+                  : "Curbside"}
               </div>
               <div className="sub">Checkout placeholder</div>
             </div>
@@ -175,6 +236,7 @@ export default function App() {
         </div>
       </div>
 
+      {/* Slide-up Item Sheet */}
       {activeItem && (
         <div className="sheetOverlay" onClick={() => setActiveItem(null)}>
           <div className="sheet" onClick={(e) => e.stopPropagation()}>
@@ -205,41 +267,65 @@ export default function App() {
               </div>
 
               {mode === "customize" ? (
-                <div className="optionGroup">
-                  <div className="groupTitle">
-                    Options <span className="hint">Demo controls</span>
+                Array.isArray(activeItem.optionGroups) && activeItem.optionGroups.length > 0 ? (
+                  activeItem.optionGroups.map((g) => (
+                    <div className="optionGroup" key={g.id}>
+                      <div className="groupTitle">
+                        {g.label}
+                        <span className="hint">
+                          {g.required ? "Required" : g.type === "multi" ? "Optional" : "Optional"}
+                        </span>
+                      </div>
+
+                      <div className="optionRow">
+                        {(g.options || []).map((o) => {
+                          const delta = Number(o.priceDelta || 0);
+                          const priceTag = delta > 0 ? `+ ${money(delta)}` : "";
+
+                          if (g.type === "single") {
+                            const checked = selections[g.id] === o.id;
+                            return (
+                              <div className="choice" key={o.id}>
+                                <div className="name">{o.label}</div>
+                                <div className="right">
+                                  {priceTag ? <span className="muted2">{priceTag}</span> : null}
+                                  <input
+                                    type="radio"
+                                    name={g.id}
+                                    checked={checked}
+                                    onChange={() => setSingle(g.id, o.id)}
+                                  />
+                                </div>
+                              </div>
+                            );
+                          }
+
+                          // multi
+                          const current = Array.isArray(selections[g.id]) ? selections[g.id] : [];
+                          const checked = current.includes(o.id);
+
+                          return (
+                            <div className="choice" key={o.id}>
+                              <div className="name">{o.label}</div>
+                              <div className="right">
+                                {priceTag ? <span className="muted2">{priceTag}</span> : null}
+                                <input
+                                  type="checkbox"
+                                  checked={checked}
+                                  onChange={() => toggleMulti(g.id, o.id)}
+                                />
+                              </div>
+                            </div>
+                          );
+                        })}
+                      </div>
+                    </div>
+                  ))
+                ) : (
+                  <div className="notice">
+                    No options yet for this item — we’ll build these next.
                   </div>
-
-                  <div className="optionRow">
-                    <div className="choice">
-                      <div className="name">Extra Sauce</div>
-                      <div className="right">
-                        <span className="muted2">+ $0.50</span>
-                        <input type="checkbox" />
-                      </div>
-                    </div>
-
-                    <div className="choice">
-                      <div className="name">Add Cheese</div>
-                      <div className="right">
-                        <span className="muted2">+ $0.75</span>
-                        <input type="checkbox" />
-                      </div>
-                    </div>
-
-                    <div className="choice">
-                      <div className="name">Spice Level</div>
-                      <div className="right">
-                        <label className="muted2">
-                          Mild <input type="radio" name="spice" defaultChecked />
-                        </label>
-                        <label className="muted2">
-                          Hot <input type="radio" name="spice" />
-                        </label>
-                      </div>
-                    </div>
-                  </div>
-                </div>
+                )
               ) : (
                 <div className="notice">
                   This item is shown as the <b>G&amp;G Original</b>. Switch to <b>Customize</b> to
@@ -253,7 +339,7 @@ export default function App() {
                 Cancel
               </button>
               <button className="btn primary" onClick={() => addToCart(activeItem)}>
-                Add to Cart — {money(activeItem.price)}
+                Add to Cart — {money(computedPrice)}
               </button>
             </div>
           </div>
