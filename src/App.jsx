@@ -18,8 +18,9 @@ export default function App() {
   const [locationId, setLocationId] = useState(LOCATIONS?.[0]?.id || "loc-1");
 
   const [activeItem, setActiveItem] = useState(null);
-  const [mode, setMode] = useState("original"); // original | customize (kept for later)
+  const [mode, setMode] = useState("original"); // original | customize
   const [drawerOpen, setDrawerOpen] = useState(false);
+  const [drawerClosing, setDrawerClosing] = useState(false);
 
   const [cartCount, setCartCount] = useState(0);
   const [cartTotal, setCartTotal] = useState(0);
@@ -40,6 +41,20 @@ export default function App() {
     setMode("original");
   }
 
+  function openDrawer() {
+    setDrawerClosing(false);
+    setDrawerOpen(true);
+  }
+
+  function closeDrawer() {
+    // play slide-out animation, then unmount
+    setDrawerClosing(true);
+    window.setTimeout(() => {
+      setDrawerOpen(false);
+      setDrawerClosing(false);
+    }, 240);
+  }
+
   return (
     <div className="container">
       {/* Header */}
@@ -52,146 +67,44 @@ export default function App() {
           </div>
         </div>
 
-        {/* Pocket Door button (top-right) */}
-        <button
-          onClick={() => setDrawerOpen(true)}
-          aria-label="Open menu"
-          style={{
-            marginLeft: "auto",
-            minHeight: 40,
-            minWidth: 44,
-            padding: "8px 12px",
-            borderRadius: 14,
-            border: "1px solid rgba(0,0,0,.18)",
-            background: "rgba(255,255,255,.20)",
-            backdropFilter: "blur(10px)",
-            fontWeight: 950,
-            cursor: "pointer",
-            color: "#111",
-          }}
-        >
+        {/* Drawer button */}
+        <button className="drawerBtn" onClick={openDrawer} aria-label="Open menu">
           ☰
         </button>
       </div>
 
-      {/* Pocket Door (Slide-over Drawer) */}
+      {/* Drawer */}
       {drawerOpen && (
         <>
-          {/* Dim overlay */}
-          <div
-            onClick={() => setDrawerOpen(false)}
-            style={{
-              position: "fixed",
-              inset: 0,
-              background: "rgba(0,0,0,.45)",
-              zIndex: 50,
-            }}
-          />
+          <div className={`drawerOverlay ${drawerClosing ? "closing" : ""}`} onClick={closeDrawer} />
 
-          {/* Drawer panel */}
-          <div
-            style={{
-              position: "fixed",
-              top: 0,
-              right: 0,
-              height: "100%",
-              width: "85%",
-              maxWidth: 420,
-              zIndex: 60,
-              background: "linear-gradient(180deg, #1c1c1f, #0f0f12)",
-              boxShadow: "-18px 0 40px rgba(0,0,0,.55)",
-              borderLeft: "1px solid rgba(255,255,255,.08)",
-              padding: 18,
-              display: "flex",
-              flexDirection: "column",
-              gap: 16,
-              transform: "translateX(0)",
-              animation: "ggDrawerIn .22s ease-out",
-            }}
-          >
-            {/* Close row */}
-            <div style={{ display: "flex", justifyContent: "flex-end" }}>
-              <button
-                onClick={() => setDrawerOpen(false)}
-                aria-label="Close"
-                style={{
-                  minHeight: 40,
-                  minWidth: 40,
-                  borderRadius: 14,
-                  border: "1px solid rgba(255,255,255,.10)",
-                  background: "rgba(255,255,255,.06)",
-                  color: "#f2f2f2",
-                  cursor: "pointer",
-                  fontWeight: 950,
-                }}
-              >
+          <div className={`drawerPanel ${drawerClosing ? "closing" : ""}`} role="dialog" aria-label="Menu">
+            <div className="drawerTop">
+              <button className="drawerClose" onClick={closeDrawer} aria-label="Close">
                 ✕
               </button>
             </div>
 
-            {/* Logo badge */}
-            <div style={{ textAlign: "center", paddingTop: 2 }}>
-              <img
-                src="/logo.png"
-                alt="G&G Steakout II"
-                style={{
-                  width: 150,
-                  height: "auto",
-                  filter: "drop-shadow(0 10px 22px rgba(0,0,0,.65))",
-                }}
-              />
-              <div
-                style={{
-                  marginTop: 10,
-                  color: "rgba(255,255,255,.85)",
-                  fontWeight: 900,
-                  letterSpacing: ".2px",
-                }}
-              >
-                Pocket Door
-              </div>
+            <div className="drawerLogoWrap">
+              <img className="drawerLogo" src="/logo.png" alt="G&G Steakout II" />
             </div>
 
-            {/* Vertical list */}
-            <div style={{ display: "flex", flexDirection: "column", gap: 12, marginTop: 6 }}>
-              {[
-                "Rewards & Savings",
-                "G&G Sauces",
-                "Account",
-                "Curbside",
-              ].map((label) => (
+            <div className="drawerList">
+              {["Rewards & Savings", "G&G Sauces", "Account", "Curbside"].map((label) => (
                 <button
                   key={label}
+                  className="drawerItem"
                   onClick={() => alert(`${label} — coming next.`)}
-                  style={{
-                    textAlign: "left",
-                    padding: "14px 14px",
-                    borderRadius: 16,
-                    border: "1px solid rgba(255,255,255,.10)",
-                    background: "rgba(255,255,255,.06)",
-                    color: "rgba(255,255,255,.92)",
-                    fontWeight: 950,
-                    cursor: "pointer",
-                  }}
                 >
                   {label}
                 </button>
               ))}
             </div>
 
-            {/* Small note */}
-            <div style={{ marginTop: "auto", color: "rgba(255,255,255,.55)", fontSize: 12 }}>
-              This panel stays out of the ordering flow so the menu stays clean.
+            <div className="drawerNote">
+              This stays out of the ordering flow so the menu stays clean.
             </div>
           </div>
-
-          {/* Keyframes (inline, so we don’t touch styles.css) */}
-          <style>{`
-            @keyframes ggDrawerIn {
-              from { transform: translateX(100%); }
-              to { transform: translateX(0%); }
-            }
-          `}</style>
         </>
       )}
 
@@ -272,9 +185,7 @@ export default function App() {
                   <div className="kicker">{section.title || "Category"}</div>
                   <div className="title">{item.name}</div>
                   <div className="meta">
-                    <span className="muted">
-                      {item.description || item.desc || " "}
-                    </span>
+                    <span className="muted">{item.description || item.desc || " "}</span>
                     <span className="accent">{money(item.price)}</span>
                   </div>
                 </div>
@@ -319,7 +230,6 @@ export default function App() {
             </div>
 
             <div className="sheetBody">
-              {/* Mode tabs kept for later (Mandela Burger options etc.) */}
               <div className="modeTabs">
                 <button
                   className={`tab ${mode === "original" ? "active" : ""}`}
