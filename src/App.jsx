@@ -12,8 +12,11 @@ export default function App() {
   const [drawerOpen, setDrawerOpen] = useState(false);
   const [curbsideLocation, setCurbsideLocation] = useState("");
   const [vehicle, setVehicle] = useState("");
+  const [activeSectionId, setActiveSectionId] = useState("specials");
 
   const sections = getMenuForLocationId().sections;
+  const activeSection = sections.find((section) => section.id === activeSectionId) || sections[0];
+  const activeSectionIndex = sections.findIndex((section) => section.id === activeSection.id);
   const location = LOCATIONS[0];
   const cartCount = cart.reduce((sum, line) => sum + line.quantity, 0);
   const cartTotal = cart.reduce((sum, line) => sum + line.unitPrice * line.quantity, 0);
@@ -63,9 +66,10 @@ export default function App() {
       .filter((line) => line.quantity > 0));
   }
 
-  function jumpTo(id) {
+  function showSection(id) {
     setDrawerOpen(false);
-    document.getElementById(id)?.scrollIntoView({ behavior: "smooth", block: "start" });
+    setActiveSectionId(id);
+    window.scrollTo({ top: 0, behavior: "auto" });
   }
 
   return (
@@ -83,9 +87,9 @@ export default function App() {
           <nav className="drawerPanel" onClick={(event) => event.stopPropagation()}>
             <button className="drawerClose" onClick={() => setDrawerOpen(false)}>✕</button>
             <img src="/logo.png" alt="G&G Steakout II" />
-            <button onClick={() => jumpTo("specials")}>Featured Specials</button>
+            <button onClick={() => showSection("specials")}>Featured Specials</button>
             {sections.slice(1).map((section) => (
-              <button key={section.id} onClick={() => jumpTo(section.id)}>{section.title}</button>
+              <button key={section.id} onClick={() => showSection(section.id)}>{section.title}</button>
             ))}
             <button onClick={() => setCartOpen(true)}>Your Order ({cartCount})</button>
           </nav>
@@ -120,18 +124,27 @@ export default function App() {
 
         <nav className="categoryBar" aria-label="Menu categories">
           {sections.map((section) => (
-            <button key={section.id} onClick={() => jumpTo(section.id)}>{section.title}</button>
+            <button
+              className={activeSection.id === section.id ? "active" : ""}
+              key={section.id}
+              onClick={() => showSection(section.id)}
+            >
+              {section.title}
+            </button>
           ))}
         </nav>
 
-        {sections.map((section) => (
-          <section id={section.id} className={section.featured ? "menuSection featured" : "menuSection"} key={section.id}>
+        <section
+          id={activeSection.id}
+          className={activeSection.featured ? "menuSection featured pageView" : "menuSection pageView"}
+          key={activeSection.id}
+        >
             <div className="sectionHeading">
-              <div><p>{section.featured ? "DON'T MISS THESE" : "G&G MENU"}</p><h2>{section.title}</h2></div>
-              <span>{section.note}</span>
+              <div><p>{activeSection.featured ? "DON'T MISS THESE" : "G&G MENU"}</p><h2>{activeSection.title}</h2></div>
+              <span>{activeSection.note}</span>
             </div>
             <div className="menuGrid">
-              {section.items.map((menuItem) => (
+              {activeSection.items.map((menuItem) => (
                 <button className="menuCard" key={menuItem.id} onClick={() => openItem(menuItem)}>
                   {menuItem.badge && <span className="dealBadge">{menuItem.badge}</span>}
                   <span className="cardTitle">{menuItem.name}</span>
@@ -143,8 +156,22 @@ export default function App() {
                 </button>
               ))}
             </div>
+            <div className="pageControls">
+              <button
+                disabled={activeSectionIndex === 0}
+                onClick={() => showSection(sections[activeSectionIndex - 1]?.id)}
+              >
+                ← Previous
+              </button>
+              <span>Page {activeSectionIndex + 1} of {sections.length}</span>
+              <button
+                disabled={activeSectionIndex === sections.length - 1}
+                onClick={() => showSection(sections[activeSectionIndex + 1]?.id)}
+              >
+                Next →
+              </button>
+            </div>
           </section>
-        ))}
 
         <p className="allergyNotice"><b>Food allergy or intolerance?</b> Please notify us before placing your order.</p>
       </main>
