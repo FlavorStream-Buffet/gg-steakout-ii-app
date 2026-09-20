@@ -1,303 +1,291 @@
 import { useMemo, useState } from "react";
 import { LOCATIONS, getMenuForLocationId } from "./data/menu.js";
 
-function money(n) {
-  const v = Number(n || 0);
-  return `$${v.toFixed(2)}`;
-}
-
-function normalizeMenu(menu) {
-  if (!menu) return [];
-  if (Array.isArray(menu)) return menu;
-  if (Array.isArray(menu.sections)) return menu.sections;
-  return [];
-}
+const money = (value) => `$${Number(value || 0).toFixed(2)}`;
 
 export default function App() {
-  const [fulfillment, setFulfillment] = useState("delivery"); // delivery | pickup | curbside
-  const [locationId, setLocationId] = useState(LOCATIONS?.[0]?.id || "loc-1");
-
+  const [fulfillment, setFulfillment] = useState("pickup");
   const [activeItem, setActiveItem] = useState(null);
-  const [mode, setMode] = useState("original"); // original | customize
+  const [selections, setSelections] = useState({});
+  const [cart, setCart] = useState([]);
+  const [cartOpen, setCartOpen] = useState(false);
   const [drawerOpen, setDrawerOpen] = useState(false);
-  const [drawerClosing, setDrawerClosing] = useState(false);
+  const [curbsideLocation, setCurbsideLocation] = useState("");
+  const [vehicle, setVehicle] = useState("");
+  const [activeSectionId, setActiveSectionId] = useState("specials");
+  const [checkoutLoading, setCheckoutLoading] = useState(false);
+  const [checkoutError, setCheckoutError] = useState("");
 
-  const [cartCount, setCartCount] = useState(0);
-  const [cartTotal, setCartTotal] = useState(0);
+  const checkoutStatus = new URLSearchParams(window.location.search).get("checkout");
 
-  const location = useMemo(() => {
-    return LOCATIONS.find((l) => l.id === locationId) || LOCATIONS[0];
-  }, [locationId]);
+  const sections = getMenuForLocationId().sections;
+  const activeSection = sections.find((section) => section.id === activeSectionId) || sections[0];
+  const activeSectionIndex = sections.findIndex((section) => section.id === activeSection.id);
+  const location = LOCATIONS[0];
+  const cartCount = cart.reduce((sum, line) => sum + line.quantity, 0);
+  const cartTotal = cart.reduce((sum, line) => sum + line.unitPrice * line.quantity, 0);
 
-  const sections = useMemo(() => {
-    const menu = getMenuForLocationId(locationId);
-    return normalizeMenu(menu);
-  }, [locationId]);
+  const activePrice = useMemo(() => {
+    if (!activeItem) return 0;
+    return activeItem.price + Object.values(selections).reduce(
+      (sum, option) => sum + Number(option?.priceDelta || 0), 0
+    );
+  }, [activeItem, selections]);
 
-  function addToGrill(item) {
-    setCartCount((c) => c + 1);
-    setCartTotal((t) => t + Number(item?.price || 0));
+  const requiredComplete = (activeItem?.optionGroups || [])
+    .filter((group) => group.required)
+    .every((group) => selections[group.id]);
+
+  function openItem(menuItem) {
+    const defaults = {};
+    (menuItem.optionGroups || []).forEach((group) => {
+      const selected = group.options.find((option) => option.default);
+      if (selected) defaults[group.id] = selected;
+    });
+    setSelections(defaults);
+    setActiveItem(menuItem);
+  }
+
+  function addItem() {
+    if (!activeItem || !requiredComplete) return;
+    const selectionText = Object.values(selections).map((option) => option.label).join(" · ");
+    const key = `${activeItem.id}|${selectionText}`;
+    setCart((current) => {
+      const found = current.find((line) => line.key === key);
+      if (found) {
+        return current.map((line) =>
+          line.key === key ? { ...line, quantity: line.quantity + 1 } : line
+        );
+      }
+      return [...current, {
+        key, item: activeItem, selections, selectionText, unitPrice: activePrice, quantity: 1,
+      }];
+    });
     setActiveItem(null);
-    setMode("original");
   }
 
-  function openDrawer() {
-    setDrawerClosing(false);
-    setDrawerOpen(true);
+  function changeQuantity(key, delta) {
+    setCart((current) => current
+      .map((line) => line.key === key ? { ...line, quantity: line.quantity + delta } : line)
+      .filter((line) => line.quantity > 0));
   }
 
-  function closeDrawer() {
-    // play slide-out animation, then unmount
-    setDrawerClosing(true);
-    window.setTimeout(() => {
-      setDrawerOpen(false);
-      setDrawerClosing(false);
-    }, 240);
+  function showSection(id) {
+    setDrawerOpen(false);
+    setActiveSectionId(id);
+    window.scrollTo({ top: 0, behavior: "auto" });
+  }
+
+  async function beginCheckout() {
+    if (!cart.length || checkoutLoading) return;
+    if (fulfillment === "curbside" && (!curbsideLocation.trim() || !vehicle.trim())) {
+      setCheckoutError("Enter where you are waiting and your vehicle description for curbside pickup.");
+      return;
+    }
+
+    setCheckoutLoading(true);
+    setCheckoutError("");
+    try {
+      const response = await fetch("/api/checkout", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({
+          fulfillment,
+          curbsideLocation,
+          vehicle,
+          cart: cart.map((line) => ({
+            itemId: line.item.id,
+            quantity: line.quantity,
+            selectionIds: Object.values(line.selections || {}).map((option) => option.id),
+          })),
+        }),
+      });
+      const result = await response.json();
+      if (!response.ok || !result.url) throw new Error(result.error || "Checkout could not be started.");
+      window.location.assign(result.url);
+    } catch (error) {
+      setCheckoutError(error.message || "Checkout could not be started.");
+      setCheckoutLoading(false);
+    }
   }
 
   return (
-    <div className="container">
-      {/* Header */}
-      <div className="header">
-        <div className="brand">
-          <img src="/logo.png" alt="G&G Steakout II" />
-          <div className="titles">
-            <div className="name">G&amp;G Steakout II</div>
-            <div className="tag">Mobile Ordering</div>
-          </div>
-        </div>
-
-        {/* Drawer button */}
-        <button className="drawerBtn" onClick={openDrawer} aria-label="Open menu">
-          ☰
+    <div className="appShell">
+      <header className="header">
+        <button className="brand" onClick={() => window.scrollTo({ top: 0, behavior: "smooth" })}>
+          <img src="/logo.png" alt="" />
+          <span><strong>G&amp;G Steakout II</strong><small>Downtown Rochester</small></span>
         </button>
-      </div>
+        <button className="menuButton" onClick={() => setDrawerOpen(true)} aria-label="Open menu">☰</button>
+      </header>
 
-      {/* Drawer */}
       {drawerOpen && (
-        <>
-          <div className={`drawerOverlay ${drawerClosing ? "closing" : ""}`} onClick={closeDrawer} />
-
-          <div className={`drawerPanel ${drawerClosing ? "closing" : ""}`} role="dialog" aria-label="Menu">
-            <div className="drawerTop">
-              <button className="drawerClose" onClick={closeDrawer} aria-label="Close">
-                ✕
-              </button>
-            </div>
-
-            <div className="drawerLogoWrap">
-              <img className="drawerLogo" src="/logo.png" alt="G&G Steakout II" />
-            </div>
-
-            <div className="drawerList">
-              {["Rewards & Savings", "G&G Sauces", "Account", "Curbside"].map((label) => (
-                <button
-                  key={label}
-                  className="drawerItem"
-                  onClick={() => alert(`${label} — coming next.`)}
-                >
-                  {label}
-                </button>
-              ))}
-            </div>
-
-            <div className="drawerNote">
-              This stays out of the ordering flow so the menu stays clean.
-            </div>
-          </div>
-        </>
+        <div className="drawerOverlay" onClick={() => setDrawerOpen(false)}>
+          <nav className="drawerPanel" onClick={(event) => event.stopPropagation()}>
+            <button className="drawerClose" onClick={() => setDrawerOpen(false)}>✕</button>
+            <img src="/logo.png" alt="G&G Steakout II" />
+            <button onClick={() => showSection("specials")}>Featured Specials</button>
+            {sections.slice(1).map((section) => (
+              <button key={section.id} onClick={() => showSection(section.id)}>{section.title}</button>
+            ))}
+            <button onClick={() => setCartOpen(true)}>Your Order ({cartCount})</button>
+          </nav>
+        </div>
       )}
 
-      {/* Fulfillment toggle */}
-      <div className="toggleRow">
-        <button
-          className={`toggle ${fulfillment === "delivery" ? "active" : ""}`}
-          onClick={() => setFulfillment("delivery")}
-        >
-          Delivery
-        </button>
-        <button
-          className={`toggle ${fulfillment === "pickup" ? "active" : ""}`}
-          onClick={() => setFulfillment("pickup")}
-        >
-          Pickup
-        </button>
-        <button
-          className={`toggle ${fulfillment === "curbside" ? "active" : ""}`}
-          onClick={() => setFulfillment("curbside")}
-        >
-          Curbside
-        </button>
-      </div>
-
-      {/* Location + Hours */}
-      <div className="locationBlock">
-        <div className="locationInner">
-          <div className="locationLabel">Location</div>
-
-          <div className="locationRow">
-            <select value={locationId} onChange={(e) => setLocationId(e.target.value)}>
-              {LOCATIONS.map((l) => (
-                <option key={l.id} value={l.id}>
-                  {l.name}
-                </option>
-              ))}
-            </select>
+      <main>
+        {checkoutStatus === "success" && (
+          <div className="checkoutBanner success">
+            <b>Sandbox payment completed.</b>
+            <span>This was a test only. No order was sent to G&amp;G or Toast.</span>
           </div>
-
-          <div className="storeHours">
-            <div className="hoursTitle">
-              <span>Store Hours</span>
-              <span className="badge ember">Downtown</span>
+        )}
+        {checkoutStatus === "cancelled" && (
+          <div className="checkoutBanner cancelled">
+            <b>Checkout cancelled.</b><span>Your cart was not charged.</span>
+          </div>
+        )}
+        <section className="orderPanel">
+          <div>
+            <p className="eyebrow">ORDER FROM</p>
+            <h1>350 East Main Street</h1>
+            <p>Rochester, New York</p>
+          </div>
+          <div className="fulfillment" aria-label="Fulfillment method">
+            <button className={fulfillment === "pickup" ? "active" : ""} onClick={() => setFulfillment("pickup")}>Pickup</button>
+            <button className={fulfillment === "curbside" ? "active" : ""} onClick={() => setFulfillment("curbside")}>Curbside</button>
+          </div>
+          {fulfillment === "curbside" && (
+            <div className="curbsideFields">
+              <label>Where are you waiting?
+                <input value={curbsideLocation} onChange={(e) => setCurbsideLocation(e.target.value)} placeholder="Street, corner, landmark, or curb location" />
+              </label>
+              <label>Vehicle description
+                <input value={vehicle} onChange={(e) => setVehicle(e.target.value)} placeholder="Color, make, and model" />
+              </label>
             </div>
+          )}
+          <div className="hours">
+            {location.hours.map((line) => <span key={line.days}><b>{line.days}</b> {line.hours}</span>)}
+          </div>
+        </section>
 
-            <div className="hoursLines">
-              {(location?.hours || []).map((h) => (
-                <div className="line" key={h.days || h.day}>
-                  <span className="day">{h.days || h.day}</span>
-                  <span className="time">{h.hours || h.time}</span>
-                </div>
+        <nav className="categoryBar" aria-label="Menu categories">
+          {sections.map((section) => (
+            <button
+              className={activeSection.id === section.id ? "active" : ""}
+              key={section.id}
+              onClick={() => showSection(section.id)}
+            >
+              {section.title}
+            </button>
+          ))}
+        </nav>
+
+        <section
+          id={activeSection.id}
+          className={activeSection.featured ? "menuSection featured pageView" : "menuSection pageView"}
+          key={activeSection.id}
+        >
+            <div className="sectionHeading">
+              <div><p>{activeSection.featured ? "DON'T MISS THESE" : "G&G MENU"}</p><h2>{activeSection.title}</h2></div>
+              <span>{activeSection.note}</span>
+            </div>
+            <div className="menuGrid">
+              {activeSection.items.map((menuItem) => (
+                <button className="menuCard" key={menuItem.id} onClick={() => openItem(menuItem)}>
+                  {menuItem.badge && <span className="dealBadge">{menuItem.badge}</span>}
+                  <span className="cardTitle">{menuItem.name}</span>
+                  <span className="cardDescription">{menuItem.description}</span>
+                  <span className="priceRow">
+                    {menuItem.compareAt && <del>{money(menuItem.compareAt)}</del>}
+                    <strong>{money(menuItem.price)}</strong><i>+</i>
+                  </span>
+                </button>
               ))}
             </div>
-          </div>
-        </div>
-      </div>
-
-      {/* Menu Sections */}
-      {sections.map((section) => (
-        <div key={section.id || section.title}>
-          <div className="sectionTitle">
-            <h2>{section.title || "Menu"}</h2>
-            <div className="sub">Tap an item to customize</div>
-          </div>
-
-          <div className="rowScroller">
-            {(section.items || []).map((item) => (
-              <div
-                key={item.id || item.name}
-                className="card"
-                onClick={() => {
-                  setActiveItem(item);
-                  setMode("original");
-                }}
+            <div className="pageControls">
+              <button
+                disabled={activeSectionIndex === 0}
+                onClick={() => showSection(sections[activeSectionIndex - 1]?.id)}
               >
-                <div className="cardInner">
-                  <div className="kicker">{section.title || "Category"}</div>
-                  <div className="title">{item.name}</div>
-                  <div className="meta">
-                    <span className="muted">{item.description || item.desc || " "}</span>
-                    <span className="accent">{money(item.price)}</span>
-                  </div>
+                ← Previous
+              </button>
+              <span>Page {activeSectionIndex + 1} of {sections.length}</span>
+              <button
+                disabled={activeSectionIndex === sections.length - 1}
+                onClick={() => showSection(sections[activeSectionIndex + 1]?.id)}
+              >
+                Next →
+              </button>
+            </div>
+          </section>
+
+        <p className="allergyNotice"><b>Food allergy or intolerance?</b> Please notify us before placing your order.</p>
+      </main>
+
+      <button className="cartBar" onClick={() => setCartOpen(true)}>
+        <span><b>Your Order ({cartCount})</b><small>{fulfillment === "curbside" ? "Curbside" : "Pickup"}</small></span>
+        <strong>{money(cartTotal)}</strong>
+      </button>
+
+      {activeItem && (
+        <div className="modalOverlay" onClick={() => setActiveItem(null)}>
+          <section className="itemModal" onClick={(event) => event.stopPropagation()}>
+            <button className="modalClose" onClick={() => setActiveItem(null)}>✕</button>
+            {activeItem.badge && <span className="dealBadge">{activeItem.badge}</span>}
+            <h2>{activeItem.name}</h2>
+            <p>{activeItem.description}</p>
+            {(activeItem.optionGroups || []).map((group) => (
+              <fieldset key={group.id}>
+                <legend>{group.label}{group.required && <em> Required</em>}</legend>
+                {group.options.map((option) => (
+                  <label className="option" key={option.id}>
+                    <input
+                      type="radio"
+                      name={group.id}
+                      checked={selections[group.id]?.id === option.id}
+                      onChange={() => setSelections((current) => ({ ...current, [group.id]: option }))}
+                    />
+                    <span>{option.label}</span>
+                    {option.priceDelta ? <b>+{money(option.priceDelta)}</b> : null}
+                  </label>
+                ))}
+              </fieldset>
+            ))}
+            <label className="instructions">Special instructions
+              <textarea placeholder="Add preparation notes or tell us about an allergy." />
+            </label>
+            <button className="primaryAction" disabled={!requiredComplete} onClick={addItem}>
+              Add to Order — {money(activePrice)}
+            </button>
+          </section>
+        </div>
+      )}
+
+      {cartOpen && (
+        <div className="modalOverlay" onClick={() => setCartOpen(false)}>
+          <section className="cartModal" onClick={(event) => event.stopPropagation()}>
+            <button className="modalClose" onClick={() => setCartOpen(false)}>✕</button>
+            <h2>Your Order</h2>
+            {cart.length === 0 ? <p className="empty">Your order is empty.</p> : cart.map((line) => (
+              <div className="cartLine" key={line.key}>
+                <div><b>{line.item.name}</b>{line.selectionText && <small>{line.selectionText}</small>}</div>
+                <div className="quantity">
+                  <button onClick={() => changeQuantity(line.key, -1)}>−</button>
+                  <span>{line.quantity}</span>
+                  <button onClick={() => changeQuantity(line.key, 1)}>+</button>
                 </div>
+                <strong>{money(line.unitPrice * line.quantity)}</strong>
               </div>
             ))}
-          </div>
-        </div>
-      ))}
-
-      {/* Bottom Grill */}
-      <div className="bottomBar">
-        <div className="inner">
-          <button className="cartPill" onClick={() => alert("Grill detail view coming next.")}>
-            <div className="left">
-              <div className="label">
-                Grill ({cartCount}) —{" "}
-                {fulfillment === "delivery"
-                  ? "Delivery"
-                  : fulfillment === "pickup"
-                  ? "Pickup"
-                  : "Curbside"}
-              </div>
-              <div className="sub">Checkout placeholder</div>
-            </div>
-            <div className="total">{money(cartTotal)}</div>
-          </button>
-        </div>
-      </div>
-
-      {/* Item Sheet */}
-      {activeItem && (
-        <div className="sheetOverlay" onClick={() => setActiveItem(null)}>
-          <div className="sheet" onClick={(e) => e.stopPropagation()}>
-            <div className="sheetHeader">
-              <div className="titleWrap">
-                <div className="itemTitle">{activeItem.name}</div>
-                <div className="itemSub">{activeItem.description || activeItem.desc || ""}</div>
-              </div>
-              <button className="closeBtn" onClick={() => setActiveItem(null)} aria-label="Close">
-                ✕
-              </button>
-            </div>
-
-            <div className="sheetBody">
-              <div className="modeTabs">
-                <button
-                  className={`tab ${mode === "original" ? "active" : ""}`}
-                  onClick={() => setMode("original")}
-                >
-                  G&amp;G Original
-                </button>
-                <button
-                  className={`tab ${mode === "customize" ? "active" : ""}`}
-                  onClick={() => setMode("customize")}
-                >
-                  Customize
-                </button>
-              </div>
-
-              {mode === "customize" ? (
-                <div className="optionGroup">
-                  <div className="groupTitle">
-                    Options <span className="hint">Demo controls</span>
-                  </div>
-
-                  <div className="optionRow">
-                    <div className="choice">
-                      <div className="name">GG Sauce</div>
-                      <div className="right">
-                        <label className="muted2">
-                          Mild <input type="radio" name="ggsauce" defaultChecked />
-                        </label>
-                        <label className="muted2">
-                          Hot <input type="radio" name="ggsauce" />
-                        </label>
-                      </div>
-                    </div>
-
-                    <div className="choice">
-                      <div className="name">Add Cheese</div>
-                      <div className="right">
-                        <span className="muted2">+ $0.75</span>
-                        <input type="checkbox" />
-                      </div>
-                    </div>
-
-                    <div className="choice">
-                      <div className="name">Extra Sauce</div>
-                      <div className="right">
-                        <span className="muted2">+ $0.50</span>
-                        <input type="checkbox" />
-                      </div>
-                    </div>
-                  </div>
-                </div>
-              ) : (
-                <div className="notice">
-                  This item is shown as the <b>G&amp;G Original</b>. Switch to <b>Customize</b> to
-                  reveal options.
-                </div>
-              )}
-            </div>
-
-            <div className="sheetFooter">
-              <button className="btn ghost" onClick={() => setActiveItem(null)}>
-                Cancel
-              </button>
-              <button className="btn primary" onClick={() => addToGrill(activeItem)}>
-                Send to Grill — {money(activeItem.price)}
-              </button>
-            </div>
-          </div>
+            <div className="cartTotal"><span>Total</span><strong>{money(cartTotal)}</strong></div>
+            {checkoutError && <p className="checkoutError" role="alert">{checkoutError}</p>}
+            <button className="primaryAction" disabled={!cart.length || checkoutLoading} onClick={beginCheckout}>
+              {checkoutLoading ? "Opening Secure Checkout…" : "Continue to Secure Test Checkout"}
+            </button>
+            <p className="checkoutNote">Stripe sandbox only. Test payments do not create a restaurant order or move real money.</p>
+          </section>
         </div>
       )}
     </div>
