@@ -137,3 +137,16 @@ textarea { min-height: 86px; resize: vertical; }
   .pageControls { grid-template-columns: 1fr 1fr; }
   .pageControls span { grid-column: 1/-1; grid-row: 1; text-align: center; }
 }
+.checkoutBanner {
+  display: grid;
+  gap: .2rem;
+  margin: 1rem auto;
+  max-width: 1180px;
+  padding: .9rem 1rem;
+  border: 1px solid rgba(255,255,255,.24);
+  border-radius: 12px;
+}
+
+.checkoutBanner.success { background: #133d2a; color: #effff5; }
+.checkoutBanner.cancelled { background: #4b3413; color: #fff7e9; }
+.checkoutError { color: #ffb4a9; font-weight: 700; margin: .8rem 0; }

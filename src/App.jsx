@@ -13,6 +13,10 @@ export default function App() {
   const [curbsideLocation, setCurbsideLocation] = useState("");
   const [vehicle, setVehicle] = useState("");
   const [activeSectionId, setActiveSectionId] = useState("specials");
+  const [checkoutLoading, setCheckoutLoading] = useState(false);
+  const [checkoutError, setCheckoutError] = useState("");
+
+  const checkoutStatus = new URLSearchParams(window.location.search).get("checkout");
 
   const sections = getMenuForLocationId().sections;
   const activeSection = sections.find((section) => section.id === activeSectionId) || sections[0];
@@ -54,7 +58,7 @@ export default function App() {
         );
       }
       return [...current, {
-        key, item: activeItem, selectionText, unitPrice: activePrice, quantity: 1,
+        key, item: activeItem, selections, selectionText, unitPrice: activePrice, quantity: 1,
       }];
     });
     setActiveItem(null);
@@ -70,6 +74,39 @@ export default function App() {
     setDrawerOpen(false);
     setActiveSectionId(id);
     window.scrollTo({ top: 0, behavior: "auto" });
+  }
+
+  async function beginCheckout() {
+    if (!cart.length || checkoutLoading) return;
+    if (fulfillment === "curbside" && (!curbsideLocation.trim() || !vehicle.trim())) {
+      setCheckoutError("Enter where you are waiting and your vehicle description for curbside pickup.");
+      return;
+    }
+
+    setCheckoutLoading(true);
+    setCheckoutError("");
+    try {
+      const response = await fetch("/api/checkout", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({
+          fulfillment,
+          curbsideLocation,
+          vehicle,
+          cart: cart.map((line) => ({
+            itemId: line.item.id,
+            quantity: line.quantity,
+            selectionIds: Object.values(line.selections || {}).map((option) => option.id),
+          })),
+        }),
+      });
+      const result = await response.json();
+      if (!response.ok || !result.url) throw new Error(result.error || "Checkout could not be started.");
+      window.location.assign(result.url);
+    } catch (error) {
+      setCheckoutError(error.message || "Checkout could not be started.");
+      setCheckoutLoading(false);
+    }
   }
 
   return (
@@ -97,6 +134,17 @@ export default function App() {
       )}
 
       <main>
+        {checkoutStatus === "success" && (
+          <div className="checkoutBanner success">
+            <b>Sandbox payment completed.</b>
+            <span>This was a test only. No order was sent to G&amp;G or Toast.</span>
+          </div>
+        )}
+        {checkoutStatus === "cancelled" && (
+          <div className="checkoutBanner cancelled">
+            <b>Checkout cancelled.</b><span>Your cart was not charged.</span>
+          </div>
+        )}
         <section className="orderPanel">
           <div>
             <p className="eyebrow">ORDER FROM</p>
@@ -232,10 +280,11 @@ export default function App() {
               </div>
             ))}
             <div className="cartTotal"><span>Total</span><strong>{money(cartTotal)}</strong></div>
-            <button className="primaryAction" disabled={!cart.length} onClick={() => alert("Live checkout will activate after payment and Toast credentials are connected.")}>
-              Continue to Checkout
+            {checkoutError && <p className="checkoutError" role="alert">{checkoutError}</p>}
+            <button className="primaryAction" disabled={!cart.length || checkoutLoading} onClick={beginCheckout}>
+              {checkoutLoading ? "Opening Secure Checkout…" : "Continue to Secure Test Checkout"}
             </button>
-            <p className="checkoutNote">Checkout remains in preview mode until the restaurant's live systems are connected.</p>
+            <p className="checkoutNote">Stripe sandbox only. Test payments do not create a restaurant order or move real money.</p>
           </section>
         </div>
       )}
