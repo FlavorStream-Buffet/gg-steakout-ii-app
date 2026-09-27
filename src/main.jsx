@@ -67,12 +67,16 @@ function mountSplash() {
 
 mountSplash();
 
+// Remove the earlier installable-web-app experiment so this behaves like the
+// existing Shirley's mobile shortcut: a normal public page that the phone can
+// place on its home screen.
 if ("serviceWorker" in navigator) {
-  window.addEventListener("load", () => {
-    navigator.serviceWorker.register("/sw.js").catch((error) => {
-      console.warn("G&G app service worker registration failed.", error);
-    });
-  });
+  navigator.serviceWorker.getRegistrations()
+    .then((registrations) => Promise.all(registrations.map((registration) => registration.unregister())))
+    .catch(() => {});
+}
+if ("caches" in window) {
+  caches.keys().then((keys) => Promise.all(keys.map((key) => caches.delete(key)))).catch(() => {});
 }
 
 ReactDOM.createRoot(document.getElementById("root")).render(

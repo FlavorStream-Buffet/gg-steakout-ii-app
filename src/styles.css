@@ -34,22 +34,6 @@ button { cursor: pointer; }
 .brand small { color: #a9bfd7; font-size: .8rem; }
 .menuButton, .drawerClose, .modalClose { border: 1px solid rgba(255,255,255,.22); background: rgba(255,255,255,.08); color: white; border-radius: 12px; min-width: 44px; min-height: 44px; font-weight: 900; }
 main { max-width: 1180px; margin: 0 auto; padding: 20px 18px 50px; }
-.installBanner { position: relative; display: grid; grid-template-columns: auto 1fr auto; align-items: center; gap: 13px; margin: 0 0 16px; padding: 13px 48px 13px 13px; color: #101820; background: linear-gradient(135deg, #f7f9fb, #dce5ee); border: 1px solid rgba(255,255,255,.7); border-left: 5px solid var(--gold); border-radius: 8px; box-shadow: 0 12px 34px rgba(0,0,0,.35); }
-.installBanner img { width: 54px; height: 54px; border-radius: 12px; }
-.installBanner div { display: grid; gap: 3px; }
-.installBanner b { color: var(--navy); }
-.installBanner span { color: #3e4c5a; font-size: .9rem; }
-.installBanner small { margin-top: 3px; color: #37475a; line-height: 1.35; }
-.installAction { min-height: 42px; padding: 0 16px; color: #101820; background: linear-gradient(180deg, #ffd867, #bd820c); border: 1px solid #a66f08; border-radius: 4px; font-weight: 900; }
-.installDismiss { position: absolute; top: 5px; right: 7px; width: 34px; height: 34px; color: #506070; background: transparent; border: 0; font-size: 1.45rem; }
-.installHelpOverlay { z-index: 100; align-items: center; padding: 18px; }
-.installHelp { position: relative; width: min(520px, 100%); padding: 28px; color: #172433; background: linear-gradient(145deg, #ffffff, #e6edf4); border: 2px solid var(--gold); border-radius: 12px; box-shadow: 0 24px 80px rgba(0,0,0,.72); }
-.installHelp > img { display: block; width: 82px; height: 82px; margin: 0 auto 10px; border-radius: 18px; }
-.installHelp h2 { margin: 0 45px 18px; color: var(--navy); text-align: center; }
-.installHelp ol { display: grid; gap: 15px; margin: 0; padding-left: 26px; font-size: 1rem; line-height: 1.45; }
-.installHelp li::marker { color: #a66f08; font-weight: 950; }
-.installHelp p { margin: 20px 0; color: #3e4c5a; text-align: center; }
-.installHelp .modalClose { color: #172433; border-color: rgba(23,36,51,.3); background: rgba(23,36,51,.07); }
 .orderPanel { display: grid; grid-template-columns: 1.3fr auto; gap: 18px; align-items: center; padding: clamp(20px, 4vw, 38px); border: 1px solid rgba(235,241,247,.34); border-radius: 12px; background: linear-gradient(115deg, rgba(10,23,38,.90), rgba(12,34,57,.75)); box-shadow: 0 28px 70px rgba(0,0,0,.48), inset 0 1px rgba(255,255,255,.11); overflow: hidden; backdrop-filter: blur(12px); }
 .eyebrow, .sectionHeading p { margin: 0 0 5px; color: var(--gold); font-weight: 950; letter-spacing: .15em; font-size: .78rem; }
 .orderPanel h1 { margin: 0; font-size: clamp(1.7rem, 4vw, 3.2rem); line-height: 1; }
@@ -152,8 +136,6 @@ textarea { min-height: 86px; resize: vertical; }
   .cartLine > strong { grid-column: 2; }
   .pageControls { grid-template-columns: 1fr 1fr; }
   .pageControls span { grid-column: 1/-1; grid-row: 1; text-align: center; }
-  .installBanner { grid-template-columns: auto 1fr; }
-  .installAction { grid-column: 1/-1; width: 100%; }
 }
 .checkoutBanner {
   display: grid;

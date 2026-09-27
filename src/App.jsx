@@ -1,4 +1,4 @@
-import { useEffect, useMemo, useState } from "react";
+import { useMemo, useState } from "react";
 import { LOCATIONS, getMenuForLocationId } from "./data/menu.js";
 
 const money = (value) => `$${Number(value || 0).toFixed(2)}`;
@@ -15,41 +15,6 @@ export default function App() {
   const [activeSectionId, setActiveSectionId] = useState("specials");
   const [checkoutLoading, setCheckoutLoading] = useState(false);
   const [checkoutError, setCheckoutError] = useState("");
-  const [installPrompt, setInstallPrompt] = useState(null);
-  const [installHelpOpen, setInstallHelpOpen] = useState(false);
-  const [installDismissed, setInstallDismissed] = useState(false);
-
-  const isStandalone = window.matchMedia("(display-mode: standalone)").matches
-    || window.navigator.standalone === true;
-  const isIos = /iphone|ipad|ipod/i.test(window.navigator.userAgent);
-
-  useEffect(() => {
-    function captureInstallPrompt(event) {
-      event.preventDefault();
-      setInstallPrompt(event);
-    }
-    function installed() {
-      setInstallPrompt(null);
-      setInstallHelpOpen(false);
-    }
-    window.addEventListener("beforeinstallprompt", captureInstallPrompt);
-    window.addEventListener("appinstalled", installed);
-    return () => {
-      window.removeEventListener("beforeinstallprompt", captureInstallPrompt);
-      window.removeEventListener("appinstalled", installed);
-    };
-  }, []);
-
-  async function installApp() {
-    if (installPrompt) {
-      await installPrompt.prompt();
-      await installPrompt.userChoice;
-      setInstallPrompt(null);
-      return;
-    }
-    setInstallHelpOpen(true);
-  }
-
   const checkoutStatus = new URLSearchParams(window.location.search).get("checkout");
 
   const sections = getMenuForLocationId().sections;
@@ -158,9 +123,6 @@ export default function App() {
           <nav className="drawerPanel" onClick={(event) => event.stopPropagation()}>
             <button className="drawerClose" onClick={() => setDrawerOpen(false)}>✕</button>
             <img src="/logo.png" alt="G&G Steakout" />
-            {!isStandalone && (
-              <button onClick={installApp}>Install G&amp;G App</button>
-            )}
             <button onClick={() => showSection("specials")}>Featured Specials</button>
             {sections.slice(1).map((section) => (
               <button key={section.id} onClick={() => showSection(section.id)}>{section.title}</button>
@@ -171,44 +133,6 @@ export default function App() {
       )}
 
       <main>
-        {!isStandalone && !installDismissed && (
-          <section className="installBanner" aria-label="Install G&G Steakout app">
-            <img src="/icons/icon-192.png" alt="" />
-            <div>
-              <b>Put G&amp;G Steakout on your phone</b>
-              <span>Open the restaurant app directly from your home screen.</span>
-              <small>Tap below for simple phone installation instructions.</small>
-            </div>
-            <button className="installAction" onClick={installApp}>
-              {installPrompt ? "Install App" : "Show Me How"}
-            </button>
-            <button className="installDismiss" onClick={() => setInstallDismissed(true)} aria-label="Dismiss install message">×</button>
-          </section>
-        )}
-        {installHelpOpen && (
-          <div className="modalOverlay installHelpOverlay" role="dialog" aria-modal="true" aria-labelledby="install-help-title">
-            <section className="installHelp">
-              <button className="modalClose" onClick={() => setInstallHelpOpen(false)} aria-label="Close installation instructions">✕</button>
-              <img src="/icons/icon-192.png" alt="G&G Steakout app icon" />
-              <h2 id="install-help-title">Install G&amp;G Steakout</h2>
-              {isIos ? (
-                <ol>
-                  <li>Open this page in <b>Safari</b>.</li>
-                  <li>Tap the <b>Share</b> button.</li>
-                  <li>Tap <b>Add to Home Screen</b>, then <b>Add</b>.</li>
-                </ol>
-              ) : (
-                <ol>
-                  <li>If you are in Facebook or Messenger, tap its <b>three-dot menu</b> and choose <b>Open in Chrome</b> or <b>Open in external browser</b>.</li>
-                  <li>In Chrome, tap its <b>three-dot menu</b>.</li>
-                  <li>Choose <b>Install app</b> or <b>Add to Home screen</b>, then confirm.</li>
-                </ol>
-              )}
-              <p>The G&amp;G logo will appear on your phone’s home screen.</p>
-              <button className="primaryAction" onClick={() => setInstallHelpOpen(false)}>Got It</button>
-            </section>
-          </div>
-        )}
         {checkoutStatus === "success" && (
           <div className="checkoutBanner success">
             <b>Sandbox payment completed.</b>
