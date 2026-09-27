@@ -50,7 +50,7 @@ function mountSplash() {
 
   const splash = document.createElement("div");
   splash.id = "gg-splash";
-  splash.innerHTML = `<img src="/logo.png" alt="G&G Steakout II" />`;
+  splash.innerHTML = `<img src="/logo.png" alt="G&G Steakout" />`;
   document.body.appendChild(splash);
 
   const SHOW_MS = 3800;
@@ -66,6 +66,18 @@ function mountSplash() {
 }
 
 mountSplash();
+
+// Remove the earlier installable-web-app experiment so this behaves like the
+// existing Shirley's mobile shortcut: a normal public page that the phone can
+// place on its home screen.
+if ("serviceWorker" in navigator) {
+  navigator.serviceWorker.getRegistrations()
+    .then((registrations) => Promise.all(registrations.map((registration) => registration.unregister())))
+    .catch(() => {});
+}
+if ("caches" in window) {
+  caches.keys().then((keys) => Promise.all(keys.map((key) => caches.delete(key)))).catch(() => {});
+}
 
 ReactDOM.createRoot(document.getElementById("root")).render(
   <React.StrictMode>
