@@ -17,6 +17,7 @@ export default function App() {
   const [checkoutError, setCheckoutError] = useState("");
   const [installPrompt, setInstallPrompt] = useState(null);
   const [showIosInstall, setShowIosInstall] = useState(false);
+  const [showAndroidInstall, setShowAndroidInstall] = useState(false);
   const [installDismissed, setInstallDismissed] = useState(false);
 
   const isStandalone = window.matchMedia("(display-mode: standalone)").matches
@@ -47,7 +48,11 @@ export default function App() {
       setInstallPrompt(null);
       return;
     }
-    if (isIos) setShowIosInstall(true);
+    if (isIos) {
+      setShowIosInstall(true);
+    } else {
+      setShowAndroidInstall(true);
+    }
   }
 
   const checkoutStatus = new URLSearchParams(window.location.search).get("checkout");
@@ -158,7 +163,7 @@ export default function App() {
           <nav className="drawerPanel" onClick={(event) => event.stopPropagation()}>
             <button className="drawerClose" onClick={() => setDrawerOpen(false)}>✕</button>
             <img src="/logo.png" alt="G&G Steakout" />
-            {!isStandalone && (installPrompt || isIos) && (
+            {!isStandalone && (
               <button onClick={installApp}>Install G&amp;G App</button>
             )}
             <button onClick={() => showSection("specials")}>Featured Specials</button>
@@ -171,7 +176,7 @@ export default function App() {
       )}
 
       <main>
-        {!isStandalone && !installDismissed && (installPrompt || isIos) && (
+        {!isStandalone && !installDismissed && (
           <section className="installBanner" aria-label="Install G&G Steakout app">
             <img src="/icons/icon-192.png" alt="" />
             <div>
@@ -180,9 +185,12 @@ export default function App() {
               {showIosInstall && (
                 <small>On iPhone: tap the Share button, then choose <b>Add to Home Screen</b>.</small>
               )}
+              {showAndroidInstall && !installPrompt && (
+                <small>On Android: tap Chrome's <b>three-dot menu</b>, then choose <b>Install app</b> or <b>Add to Home screen</b>.</small>
+              )}
             </div>
             <button className="installAction" onClick={installApp}>
-              {isIos ? "Show Me How" : "Install App"}
+              {installPrompt ? "Install App" : "Show Me How"}
             </button>
             <button className="installDismiss" onClick={() => setInstallDismissed(true)} aria-label="Dismiss install message">×</button>
           </section>
