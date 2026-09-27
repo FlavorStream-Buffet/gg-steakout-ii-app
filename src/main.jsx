@@ -50,7 +50,7 @@ function mountSplash() {
 
   const splash = document.createElement("div");
   splash.id = "gg-splash";
-  splash.innerHTML = `<img src="/logo.png" alt="G&G Steakout II" />`;
+  splash.innerHTML = `<img src="/logo.png" alt="G&G Steakout" />`;
   document.body.appendChild(splash);
 
   const SHOW_MS = 3800;
@@ -66,6 +66,14 @@ function mountSplash() {
 }
 
 mountSplash();
+
+if ("serviceWorker" in navigator) {
+  window.addEventListener("load", () => {
+    navigator.serviceWorker.register("/sw.js").catch((error) => {
+      console.warn("G&G app service worker registration failed.", error);
+    });
+  });
+}
 
 ReactDOM.createRoot(document.getElementById("root")).render(
   <React.StrictMode>

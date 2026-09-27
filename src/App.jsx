@@ -1,4 +1,4 @@
-import { useMemo, useState } from "react";
+import { useEffect, useMemo, useState } from "react";
 import { LOCATIONS, getMenuForLocationId } from "./data/menu.js";
 
 const money = (value) => `$${Number(value || 0).toFixed(2)}`;
@@ -15,6 +15,40 @@ export default function App() {
   const [activeSectionId, setActiveSectionId] = useState("specials");
   const [checkoutLoading, setCheckoutLoading] = useState(false);
   const [checkoutError, setCheckoutError] = useState("");
+  const [installPrompt, setInstallPrompt] = useState(null);
+  const [showIosInstall, setShowIosInstall] = useState(false);
+  const [installDismissed, setInstallDismissed] = useState(false);
+
+  const isStandalone = window.matchMedia("(display-mode: standalone)").matches
+    || window.navigator.standalone === true;
+  const isIos = /iphone|ipad|ipod/i.test(window.navigator.userAgent);
+
+  useEffect(() => {
+    function captureInstallPrompt(event) {
+      event.preventDefault();
+      setInstallPrompt(event);
+    }
+    function installed() {
+      setInstallPrompt(null);
+      setShowIosInstall(false);
+    }
+    window.addEventListener("beforeinstallprompt", captureInstallPrompt);
+    window.addEventListener("appinstalled", installed);
+    return () => {
+      window.removeEventListener("beforeinstallprompt", captureInstallPrompt);
+      window.removeEventListener("appinstalled", installed);
+    };
+  }, []);
+
+  async function installApp() {
+    if (installPrompt) {
+      await installPrompt.prompt();
+      await installPrompt.userChoice;
+      setInstallPrompt(null);
+      return;
+    }
+    if (isIos) setShowIosInstall(true);
+  }
 
   const checkoutStatus = new URLSearchParams(window.location.search).get("checkout");
 
@@ -114,7 +148,7 @@ export default function App() {
       <header className="header">
         <button className="brand" onClick={() => window.scrollTo({ top: 0, behavior: "smooth" })}>
           <img src="/logo.png" alt="" />
-          <span><strong>G&amp;G Steakout II</strong><small>Downtown Rochester</small></span>
+          <span><strong>G&amp;G Steakout</strong><small>Downtown Rochester</small></span>
         </button>
         <button className="menuButton" onClick={() => setDrawerOpen(true)} aria-label="Open menu">☰</button>
       </header>
@@ -123,7 +157,10 @@ export default function App() {
         <div className="drawerOverlay" onClick={() => setDrawerOpen(false)}>
           <nav className="drawerPanel" onClick={(event) => event.stopPropagation()}>
             <button className="drawerClose" onClick={() => setDrawerOpen(false)}>✕</button>
-            <img src="/logo.png" alt="G&G Steakout II" />
+            <img src="/logo.png" alt="G&G Steakout" />
+            {!isStandalone && (installPrompt || isIos) && (
+              <button onClick={installApp}>Install G&amp;G App</button>
+            )}
             <button onClick={() => showSection("specials")}>Featured Specials</button>
             {sections.slice(1).map((section) => (
               <button key={section.id} onClick={() => showSection(section.id)}>{section.title}</button>
@@ -134,6 +171,22 @@ export default function App() {
       )}
 
       <main>
+        {!isStandalone && !installDismissed && (installPrompt || isIos) && (
+          <section className="installBanner" aria-label="Install G&G Steakout app">
+            <img src="/icons/icon-192.png" alt="" />
+            <div>
+              <b>Put G&amp;G Steakout on your phone</b>
+              <span>Open the restaurant app directly from your home screen.</span>
+              {showIosInstall && (
+                <small>On iPhone: tap the Share button, then choose <b>Add to Home Screen</b>.</small>
+              )}
+            </div>
+            <button className="installAction" onClick={installApp}>
+              {isIos ? "Show Me How" : "Install App"}
+            </button>
+            <button className="installDismiss" onClick={() => setInstallDismissed(true)} aria-label="Dismiss install message">×</button>
+          </section>
+        )}
         {checkoutStatus === "success" && (
           <div className="checkoutBanner success">
             <b>Sandbox payment completed.</b>
