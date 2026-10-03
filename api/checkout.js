@@ -1,4 +1,5 @@
 import Stripe from "stripe";
+import { randomBytes, createHash } from "node:crypto";
 import { MENU_SECTIONS } from "../src/data/menu.js";
 
 const RESTAURANT_TAX_PERCENT = 8;
@@ -70,7 +71,7 @@ export default async function handler(request, response) {
   }
 
   try {
-    const { cart, fulfillment, curbsideLocation, vehicle } = request.body || {};
+    const { cart, fulfillment, curbsideLocation, vehicle, confirmationPreference = "email" } = request.body || {};
     if (!Array.isArray(cart) || cart.length === 0 || cart.length > 50) {
       return response.status(400).json({ error: "Your order is empty or too large." });
     }
@@ -81,6 +82,10 @@ export default async function handler(request, response) {
       return response.status(400).json({ error: "Curbside location and vehicle description are required." });
     }
 
+    if (!["email", "text", "both"].includes(confirmationPreference)) {
+      return response.status(400).json({ error: "Choose Email, Text, or Both." });
+    }
+    const receiptToken = randomBytes(32).toString("hex");
     let pretaxSubtotalCents = 0;
     const lineItems = cart.map((line) => {
       const menuItem = catalog.get(line.itemId);
@@ -134,6 +139,8 @@ export default async function handler(request, response) {
       cancel_url: `${origin}/?checkout=cancelled#/`,
       metadata: {
         app: "flavorstream-gg-steakout",
+        receipt_token_hash: createHash("sha256").update(receiptToken).digest("hex"),
+        confirmation_preference: confirmationPreference,
         fulfillment,
         curbside_location: String(curbsideLocation || "").trim().slice(0, 500),
         vehicle: String(vehicle || "").trim().slice(0, 500),
@@ -155,9 +162,12 @@ export default async function handler(request, response) {
         },
       },
     });
+    response.setHeader("Cache-Control", "no-store");
+    response.setHeader("Set-Cookie", `gg_receipt_${session.id}=${receiptToken}; HttpOnly; Secure; SameSite=Lax; Path=/api/payment-confirmation; Max-Age=604800`);
     return response.status(200).json({ url: session.url });
   } catch (error) {
     console.error("Stripe checkout error", error);
     return response.status(400).json({ error: error?.message || "Unable to start Stripe checkout." });
   }
 }
+
