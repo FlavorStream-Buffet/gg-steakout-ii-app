@@ -150,3 +150,16 @@ textarea { min-height: 86px; resize: vertical; }
 .checkoutBanner.success { background: #133d2a; color: #effff5; }
 .checkoutBanner.cancelled { background: #4b3413; color: #fff7e9; }
 .checkoutError { color: #ffb4a9; font-weight: 700; margin: .8rem 0; }
+
+.paymentReceipt { max-width: 860px; margin: 24px auto; padding: 28px; background: #101e2a; color: #f6f8fa; border: 1px solid #d9a828; border-radius: 12px; }
+.paymentReceipt h2 { margin: 8px 0 18px; }
+.paymentReceipt p { line-height: 1.6; overflow-wrap: anywhere; }
+.receiptNotice { padding: 14px; background: #233445; border-left: 3px solid #e7b638; }
+.confirmationChoices { margin: 20px 0; border: 1px solid #53606b; border-radius: 8px; padding: 16px; }
+@media print {
+  .header, .orderPanel, .categoryBar, .menuSection, .allergyNotice, .cartBar, .paymentReceipt button { display: none !important; }
+  body, .appShell { background: white !important; color: black !important; }
+  .paymentReceipt { background: white !important; color: black !important; border: 1px solid black; margin: 0; }
+  .receiptNotice { background: white; }
+}
+
