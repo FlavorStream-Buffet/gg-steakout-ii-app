@@ -2,6 +2,7 @@ import Stripe from "stripe";
 import { MENU_SECTIONS } from "../src/data/menu.js";
 
 const RESTAURANT_TAX_PERCENT = 8;
+const FSB_COMMISSION_PERCENT = 15;
 const FOOD_TAX_CODE = "txcd_40060003";
 const catalog = new Map(
   MENU_SECTIONS.flatMap((section) => section.items).map((menuItem) => [menuItem.id, menuItem])
@@ -54,8 +55,18 @@ export default async function handler(request, response) {
   }
 
   const secretKey = process.env.STRIPE_SECRET_KEY;
-  if (!secretKey?.startsWith("sk_test_")) {
-    return response.status(503).json({ error: "Stripe sandbox is not configured." });
+  const isTestMode = secretKey?.startsWith("sk_test_");
+  const isLiveMode = secretKey?.startsWith("sk_live_");
+  const connectedAccountId = process.env.STRIPE_CONNECTED_ACCOUNT_ID;
+
+  if (!isTestMode && !isLiveMode) {
+    return response.status(503).json({ error: "Stripe is not configured." });
+  }
+  if (isLiveMode && process.env.STRIPE_LIVE_ENABLED !== "true") {
+    return response.status(503).json({ error: "Live ordering is not enabled yet." });
+  }
+  if (isLiveMode && !connectedAccountId?.startsWith("acct_")) {
+    return response.status(503).json({ error: "G&G payment onboarding is incomplete." });
   }
 
   try {
@@ -70,6 +81,7 @@ export default async function handler(request, response) {
       return response.status(400).json({ error: "Curbside location and vehicle description are required." });
     }
 
+    let pretaxSubtotalCents = 0;
     const lineItems = cart.map((line) => {
       const menuItem = catalog.get(line.itemId);
       const quantity = Number(line.quantity);
@@ -80,6 +92,7 @@ export default async function handler(request, response) {
       const unitAmount = Math.round((menuItem.price + options.reduce(
         (sum, option) => sum + Number(option.priceDelta || 0), 0
       )) * 100);
+      pretaxSubtotalCents += unitAmount * quantity;
       const description = options.map((option) => option.label).join(" · ").slice(0, 500);
       return {
         quantity,
@@ -101,6 +114,15 @@ export default async function handler(request, response) {
     const taxRateId = await getRestaurantTaxRate(stripe);
     lineItems.forEach((line) => { line.tax_rates = [taxRateId]; });
     const origin = getOrigin(request);
+    const environment = isLiveMode ? "live" : "sandbox";
+    const applicationFeeAmount = Math.round(
+      pretaxSubtotalCents * FSB_COMMISSION_PERCENT / 100
+    );
+    const connectPaymentData = connectedAccountId ? {
+      application_fee_amount: applicationFeeAmount,
+      on_behalf_of: connectedAccountId,
+      transfer_data: { destination: connectedAccountId },
+    } : {};
     const session = await stripe.checkout.sessions.create({
       mode: "payment",
       payment_method_types: ["card"],
@@ -115,10 +137,22 @@ export default async function handler(request, response) {
         fulfillment,
         curbside_location: String(curbsideLocation || "").trim().slice(0, 500),
         vehicle: String(vehicle || "").trim().slice(0, 500),
-        environment: "sandbox",
+        environment,
+        pretax_subtotal_cents: String(pretaxSubtotalCents),
+        fsb_commission_cents: String(applicationFeeAmount),
+        fsb_commission_percent: String(FSB_COMMISSION_PERCENT),
+        connected_account: connectedAccountId || "sandbox-platform-only",
       },
       payment_intent_data: {
-        metadata: { app: "flavorstream-gg-steakout", fulfillment, environment: "sandbox" },
+        ...connectPaymentData,
+        metadata: {
+          app: "flavorstream-gg-steakout",
+          fulfillment,
+          environment,
+          pretax_subtotal_cents: String(pretaxSubtotalCents),
+          fsb_commission_cents: String(applicationFeeAmount),
+          connected_account: connectedAccountId || "sandbox-platform-only",
+        },
       },
     });
     return response.status(200).json({ url: session.url });

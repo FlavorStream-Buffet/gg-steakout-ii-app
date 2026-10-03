@@ -17,9 +17,14 @@ export default async function handler(request, response) {
   const secretKey = process.env.STRIPE_SECRET_KEY;
   const webhookSecret = process.env.STRIPE_WEBHOOK_SECRET;
   const signature = request.headers["stripe-signature"];
+  const isTestMode = secretKey?.startsWith("sk_test_");
+  const isLiveMode = secretKey?.startsWith("sk_live_");
 
-  if (!secretKey?.startsWith("sk_test_") || !webhookSecret || !signature) {
-    return response.status(503).json({ error: "Stripe sandbox webhook is not configured." });
+  if ((!isTestMode && !isLiveMode) || !webhookSecret || !signature) {
+    return response.status(503).json({ error: "Stripe webhook is not configured." });
+  }
+  if (isLiveMode && process.env.STRIPE_LIVE_ENABLED !== "true") {
+    return response.status(503).json({ error: "Live ordering is not enabled yet." });
   }
 
   try {
@@ -32,12 +37,16 @@ export default async function handler(request, response) {
 
     if (event.type === "checkout.session.completed") {
       const session = event.data.object;
-      console.info("Verified G&G sandbox payment", {
+      console.info("Verified G&G payment", {
         eventId: event.id,
         sessionId: session.id,
         paymentStatus: session.payment_status,
         amountTotal: session.amount_total,
         fulfillment: session.metadata?.fulfillment,
+        environment: session.metadata?.environment,
+        pretaxSubtotalCents: session.metadata?.pretax_subtotal_cents,
+        fsbCommissionCents: session.metadata?.fsb_commission_cents,
+        connectedAccount: session.metadata?.connected_account,
       });
       // Toast submission and permanent order storage remain intentionally disabled.
     }
