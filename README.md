@@ -27,3 +27,10 @@ Never expose these values to the browser or commit them to Git.
 - Android uses the in-app installation prompt when supported.
 - iPhone customers receive instructions to use Share > Add to Home Screen.
 - The installed app opens in standalone display mode with the G&G bull icon.
+
+
+## Customer confirmations
+
+The cart saves an Email, Text, or Both preference in Stripe session metadata. The return page verifies paid status server-side and displays the Stripe line items, total, tax, fulfillment details, and a printable payment summary. A browser-bound HttpOnly receipt cookie protects access; older payments cannot use this summary. The payment reference is not a restaurant order number.
+
+Email and SMS delivery are NOT connected. No customer confirmation messages are sent by this app. Toast submission, permanent restaurant order storage, scheduling, restaurant acceptance, and ready-for-pickup notifications remain unimplemented. Do not enable live ordering based on this payment-summary change. A delivery provider and retry/idempotency-backed order fulfillment must be implemented and tested first.
