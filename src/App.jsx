@@ -1,4 +1,4 @@
-import { useMemo, useState } from "react";
+import { useEffect, useMemo, useState } from "react";
 import { LOCATIONS, getMenuForLocationId } from "./data/menu.js";
 
 const money = (value) => `$${Number(value || 0).toFixed(2)}`;
@@ -15,7 +15,30 @@ export default function App() {
   const [activeSectionId, setActiveSectionId] = useState("specials");
   const [checkoutLoading, setCheckoutLoading] = useState(false);
   const [checkoutError, setCheckoutError] = useState("");
+  const [confirmationPreference, setConfirmationPreference] = useState("email");
+  const [receipt, setReceipt] = useState(null);
+  const [receiptError, setReceiptError] = useState("");
+  const [receiptLoading, setReceiptLoading] = useState(false);
+  const [receiptAttempt, setReceiptAttempt] = useState(0);
   const checkoutStatus = new URLSearchParams(window.location.search).get("checkout");
+
+  useEffect(() => {
+    if (checkoutStatus !== "success") return;
+    const sessionId = new URLSearchParams(window.location.search).get("session_id");
+    if (!sessionId) { setReceiptError("Payment reference is missing. Do not pay again; check with support."); return; }
+    const controller = new AbortController();
+    setReceiptLoading(true);
+    setReceiptError("");
+    fetch(`/api/payment-confirmation?session_id=${encodeURIComponent(sessionId)}`, { signal: controller.signal })
+      .then(async (response) => {
+        const result = await response.json();
+        if (!response.ok) throw new Error(result.error || "Unable to verify payment.");
+        setReceipt(result);
+      })
+      .catch((error) => { if (error.name !== "AbortError") setReceiptError(error.message); })
+      .finally(() => { if (!controller.signal.aborted) setReceiptLoading(false); });
+    return () => controller.abort();
+  }, [checkoutStatus, receiptAttempt]);
 
   const sections = getMenuForLocationId().sections;
   const activeSection = sections.find((section) => section.id === activeSectionId) || sections[0];
@@ -90,6 +113,7 @@ export default function App() {
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({
           fulfillment,
+          confirmationPreference,
           curbsideLocation,
           vehicle,
           cart: cart.map((line) => ({
@@ -134,10 +158,26 @@ export default function App() {
 
       <main>
         {checkoutStatus === "success" && (
-          <div className="checkoutBanner success">
-            <b>Sandbox payment completed.</b>
-            <span>This was a test only. No order was sent to G&amp;G or Toast.</span>
-          </div>
+          <section className="paymentReceipt" aria-live="polite">
+            <p className="eyebrow">G&amp;G STEAKOUT · PAYMENT SUMMARY</p>
+            {receiptLoading && <h2>Verifying your payment…</h2>}
+            {receiptError && <><h2>Payment confirmation unavailable</h2><p role="alert">{receiptError}</p><p>Do not submit another payment.</p><button className="primaryAction" onClick={() => setReceiptAttempt((n) => n + 1)}>Check Again</button></>}
+            {receipt && <>
+              <h2>{receipt.sandbox ? "Test payment confirmed" : "Payment confirmed"}</h2>
+              <p><b>Payment reference:</b> {receipt.reference}</p>
+              <p className="receiptNotice">{receipt.sandbox ? "Test only: no restaurant order was sent to G&G or Toast. No food is being prepared." : "Payment received. Restaurant acceptance and pickup time have not been confirmed. This is not a pickup confirmation."}</p>
+              {receipt.items.map((item, index) => <div className="cartLine" key={index}><div><b>{item.quantity} × {item.name}</b>{item.options && <small>{item.options}</small>}</div><strong>{money(item.subtotal / 100)}</strong></div>)}
+              <div className="cartTotal"><span>Subtotal</span><strong>{money(receipt.subtotal / 100)}</strong></div>
+              <div className="cartTotal"><span>Sales tax</span><strong>{money(receipt.tax / 100)}</strong></div>
+              <div className="cartTotal"><span>Total paid</span><strong>{money(receipt.total / 100)}</strong></div>
+              <p><b>{receipt.fulfillment === "curbside" ? "Curbside" : "Pickup"} location:</b> 350 East Main Street, Rochester, NY</p>
+              {receipt.fulfillment === "curbside" && <p>{receipt.curbsideLocation} · {receipt.vehicle}</p>}
+              <p><b>Pickup time:</b> Not scheduled or confirmed.</p>
+              <p><b>Confirmation preference:</b> {({ email: "Email", text: "Text", both: "Email and Text" })[receipt.preference] || "Not selected"}</p>
+              <p className="receiptNotice">Email and text delivery are not connected yet. No confirmation message has been sent by this app.</p>
+              <button className="primaryAction" onClick={() => window.print()}>Print / Save Payment Summary</button>
+            </>}
+          </section>
         )}
         {checkoutStatus === "cancelled" && (
           <div className="checkoutBanner cancelled">
@@ -279,6 +319,11 @@ export default function App() {
               </div>
             ))}
             <div className="cartTotal"><span>Total</span><strong>{money(cartTotal)}</strong></div>
+            {cart.length > 0 && <fieldset className="confirmationChoices">
+              <legend>How would you like your order confirmation?</legend>
+              {[ ["email", "Email"], ["text", "Text"], ["both", "Both"] ].map(([value, label]) => <label className="option" key={value}><input type="radio" name="confirmationPreference" value={value} checked={confirmationPreference === value} onChange={() => setConfirmationPreference(value)} /><span>{label}</span></label>)}
+              <p className="checkoutNote">Preference saved for this payment. Email and text delivery are not connected yet. Contact details are collected securely at checkout. This choice is for order updates only.</p>
+            </fieldset>}
             {checkoutError && <p className="checkoutError" role="alert">{checkoutError}</p>}
             <button className="primaryAction" disabled={!cart.length || checkoutLoading} onClick={beginCheckout}>
               {checkoutLoading ? "Opening Secure Checkout…" : "Continue to Secure Test Checkout"}
@@ -290,3 +335,4 @@ export default function App() {
     </div>
   );
 }
+
